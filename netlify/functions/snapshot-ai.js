@@ -21,7 +21,7 @@ const HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const MAX_HTML = 150 * 1024; // 150KB cap on source HTML
+const MAX_HTML = 50 * 1024; // 50KB cap — Claude only needs the head + main content to rebuild
 
 const SYSTEM_PROMPT = `Website snapshot generator. Rebuild provided HTML as ONE frozen file. Prioritize accuracy and completeness.
 
@@ -157,7 +157,17 @@ export default async function handler(req) {
       }
 
       if (fetchedHtml.length > MAX_HTML) {
-        fetchedHtml = fetchedHtml.substring(0, MAX_HTML) + '\n<!-- truncated -->';
+        // Strip scripts, tracking, and noise before truncating
+        fetchedHtml = fetchedHtml
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+          .replace(/data-[a-z-]+="[^"]*"/gi, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .replace(/\s{2,}/g, ' ');
+        // Still too long? Truncate
+        if (fetchedHtml.length > MAX_HTML) {
+          fetchedHtml = fetchedHtml.substring(0, MAX_HTML) + '\n<!-- truncated -->';
+        }
       }
 
       messages = [{
@@ -205,7 +215,10 @@ export default async function handler(req) {
       const errText = await claudeRes.text();
       console.error('[snapshot-ai] Claude API status:', claudeRes.status, errText);
       await userRef.update({ credits: FieldValue.increment(1) });
-      return new Response(JSON.stringify({ ok: false, error: 'AI generation failed — credit refunded' }), {
+      const msg = claudeRes.status === 429
+        ? 'AI is busy — wait 30 seconds and try again. Credit refunded.'
+        : 'AI generation failed — credit refunded';
+      return new Response(JSON.stringify({ ok: false, error: msg }), {
         status: 502, headers: { ...HEADERS, 'Content-Type': 'application/json' },
       });
     }
