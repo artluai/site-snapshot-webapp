@@ -34,8 +34,18 @@ RULES:
 6. If tabs/pages exist, include all with show/hide. iframe-safe.
 7. Wire ALL interactive elements with vanilla JS: dropdowns (click open, outside close), accordions, modals (X/backdrop/Esc), hamburger nav, tabs, sortable headers, filters, toggle switches, carousels.
 8. EVERY repeated interactive element must work — all rows expand, not just the first.
-9. Replace external images with inline SVG placeholders that match the approximate size and shape.
+9. Replace external images and complex SVGs with simple inline placeholders. For logos: use a colored rectangle with the brand name as text. NEVER copy long SVG path data — it wastes tokens. Example: <svg width="60" height="25" viewBox="0 0 60 25"><rect width="60" height="25" rx="4" fill="#635bff"/><text x="30" y="17" text-anchor="middle" fill="#fff" font-size="12" font-weight="600">Stripe</text></svg>
 10. Preserve the exact visual hierarchy: which text is bold, which is muted, which is a link, relative sizing.
+
+SMART APPROXIMATIONS (save tokens, visually identical):
+- Colors: if source has #f8f9fa and #f7f8f9, pick one and use it for both. Merge colors within 5% of each other.
+- Spacing: round to nearest 4px. 13px→12px, 17px→16px, 22px→24px. Nobody sees 1-2px differences.
+- Font sizes: use a limited scale (12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64). Round to nearest.
+- Borders: 1px solid #e0e0e0 covers most light borders. Don't write 5 different border colors if they look similar.
+- Shadows: use at most 3 shadow levels (subtle, medium, strong). Don't copy complex multi-layer shadows verbatim.
+- Gradients: 2-3 stops max. Approximate the visual feel, don't copy 8-stop gradients.
+- Reuse classes aggressively: if 3 elements look the same, one class, not three.
+- Skip micro-animations, transitions under 200ms, and hover color changes less than 10% different from default.
 
 TOGGLE WIDGET — always include, wrap content in <div id="snap-wrapper">:
 <div id="snap-toggle" style="position:fixed;bottom:16px;right:16px;z-index:99999;display:flex;gap:4px;background:rgba(0,0,0,.7);padding:4px;border-radius:6px;font-family:system-ui;font-size:11px"><button onclick="setView('desktop')" id="snap-dt" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#fff;color:#000;font-size:11px">Desktop</button><button onclick="setView('mobile')" id="snap-mb" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#999;font-size:11px">Mobile</button></div>
