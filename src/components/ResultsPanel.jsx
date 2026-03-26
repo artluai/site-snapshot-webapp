@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { downloadHTML } from '../lib/snapshot-free.js';
 
-export default function ResultsPanel({ result, mode, onDismissStamp, onUpgradeMode, toast }) {
+export default function ResultsPanel({ result, mode, loading, onDismissStamp, onUpgradeMode, toast }) {
   const ref = useRef(null);
   useEffect(() => {
     if (result) ref.current?.scrollIntoView({ behavior: 'smooth' });
@@ -10,6 +11,8 @@ export default function ResultsPanel({ result, mode, onDismissStamp, onUpgradeMo
 
   return (
     <section style={S.section} ref={ref}>
+      {result.type === 'loading' && <LoadingResult host={result.host} />}
+      {result.type === 'free-success' && <FreeResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} onUpgrade={onUpgradeMode} />}
       {result.type === 'hn' && <HNResult host={result.host} toast={toast} onUpgrade={onUpgradeMode} />}
       {(result.type === 'linear-blocked' || result.type === 'linear-dismissed') && (
         <LinearResult blocked={result.type === 'linear-blocked'} host={result.host} onDismiss={onDismissStamp} toast={toast} />
@@ -43,6 +46,83 @@ function StatusCard({ steps, variant }) {
   );
 }
 
+/* ── Loading state ── */
+function LoadingResult({ host }) {
+  return (
+    <div style={{ ...S.status, background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+      <div style={S.statusItem}>
+        <span style={{ ...S.dot, background: '#22c55e', animation: 'pulse 1.5s ease infinite' }} />
+        Fetching {host}...
+      </div>
+      <div style={{ paddingLeft: 18, fontSize: 12, color: '#999', marginTop: 4 }}>
+        connecting · downloading HTML · this takes a few seconds
+      </div>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+    </div>
+  );
+}
+
+/* ── Free success — real HTML preview ── */
+function FreeResult({ host, html, sizeKB, toast, onUpgrade }) {
+  const [view, setView] = useState('desktop');
+  const scriptCount = (html.match(/stripped/gi) || []).length; // approximate
+
+  const handleDownload = () => {
+    const filename = `snapshot-${host.replace(/[^a-z0-9]/gi, '-')}.html`;
+    downloadHTML(html, filename);
+    toast('Downloaded ' + filename);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(html);
+      toast('HTML copied to clipboard!');
+    } catch {
+      toast('Copy failed — try download instead.');
+    }
+  };
+
+  return (
+    <>
+      <StatusCard variant="green" steps={[
+        `Fetched ${host}`,
+        'Stripped scripts & tracking pixels',
+        `Snapshot ready — ${sizeKB}KB single file ✓`,
+      ]} />
+      <div style={S.preview}>
+        <div style={S.previewBar}>
+          <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
+          <span style={S.previewTitle}>snapshot — {host}</span>
+          <div style={S.toggle}>
+            <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
+            <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
+          </div>
+        </div>
+        <div style={{ ...S.frame, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
+          <iframe
+            srcDoc={html}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            sandbox="allow-same-origin"
+            title={`Snapshot of ${host}`}
+          />
+        </div>
+      </div>
+      <div style={S.actions}>
+        <button style={S.btnPrimary} onClick={handleDownload}>↓ DOWNLOAD HTML</button>
+        <button style={S.btnGhost} onClick={handleCopy}>COPY TO CLIPBOARD</button>
+      </div>
+      <div style={S.enhance}>
+        <div>
+          <h3 style={S.enhTitle}>This is the basic version ⚡</h3>
+          <p style={S.enhDesc}>It captured the content. AI mode would also match exact fonts, add working links, and include a responsive mobile view.</p>
+        </div>
+        <button style={S.enhBtn} onClick={onUpgrade}>UPGRADE TO AI — 1 CREDIT →</button>
+      </div>
+    </>
+  );
+}
+
+/* ── HN mock result (kept for demo/examples) ── */
 function HNResult({ host, toast, onUpgrade }) {
   return (
     <>
