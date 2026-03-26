@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth, loading }) {
+export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth }) {
   const [url, setUrl] = useState('');
 
-  const handleSubmit = () => { if (!loading) onSnapshot(url); };
+  const handleSubmit = () => onSnapshot(url);
   const handleKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
 
   const tryHN = () => {
@@ -20,18 +20,10 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
       <div style={S.card} className="input-card">
         <div style={S.label}>PASTE A LINK TO GET STARTED</div>
 
-        {mode !== 'upload' && (
-          <div style={S.row} className="input-row">
-            <input style={S.field} value={url} onChange={e => setUrl(e.target.value)} onKeyDown={handleKey} placeholder="https://any-website.com" />
-            <button
-              style={{ ...S.snap, ...(loading ? { opacity: .5, pointerEvents: 'none' } : {}) }}
-              className="snap-btn"
-              onClick={handleSubmit}
-            >
-              {loading ? 'CAPTURING...' : mode === 'ai' ? '🧠 AI SNAPSHOT →' : 'SAVE COPY →'}
-            </button>
-          </div>
-        )}
+        <div style={S.row} className="input-row">
+          <input style={S.field} value={url} onChange={e => setUrl(e.target.value)} onKeyDown={handleKey} placeholder="https://any-website.com" />
+          <button style={S.snap} className="snap-btn" onClick={handleSubmit}>SAVE COPY →</button>
+        </div>
 
         <div style={S.modes} className="mode-chips">
           {MODES.map(m => (
@@ -52,50 +44,45 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
         </div>
 
         <div style={S.modeDesc}>
-          {mode === 'quick' && <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>}
-          {mode === 'ai' && <div>Pro capture — a real browser visits the page, renders everything including JavaScript, and saves a perfect copy. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong><div style={S.creditNote}>5 credits for $9.99 · 20 credits for $29.99</div></div>}
-          {mode === 'upload' && <div>No link? Drop screenshots. AI rebuilds the site from images. <strong style={{ color: '#555' }}>Coming soon.</strong></div>}
+          <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>
         </div>
 
-        {/* Free group — compat grid + examples */}
-        {mode !== 'upload' && (
-          <div style={{ ...S.freeGroup, ...(mode !== 'quick' ? S.freeGroupDimmed : {}) }}>
-            <div style={S.freeLabel}><span style={S.freeBadge}>⚡ FREE</span> These examples and limits apply to the free tier</div>
-            <div style={S.freeBody}>
-              <div style={S.compatGrid} className="compat-grid">
-                <div style={S.compatGood}>
-                  <div style={S.compatHead}>✅ Works great on</div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>news.ycombinator.com</span></div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>craigslist.org</span></div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>wikipedia.org</span></div>
-                  <div style={{ ...S.compatItem, fontStyle: 'italic', color: '#aaa' }}>blogs, docs, static sites</div>
-                </div>
-                <div style={S.compatNeeds}>
-                  <div style={{ ...S.compatHead, color: '#92400e' }}>⚠️ Needs AI mode</div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>linear.app</span></div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>figma.com</span></div>
-                  <div style={S.compatItem}><span style={S.compatUrl}>notion.so</span></div>
-                  <div style={{ ...S.compatItem, fontStyle: 'italic', color: '#aaa' }}>dashboards, SPAs, React apps</div>
-                </div>
+        <div style={S.freeGroup}>
+          <div style={S.freeLabel}><span style={S.freeBadge}>⚡ FREE</span> These examples and limits apply to the free tier</div>
+          <div style={S.freeBody}>
+            <div style={S.compatGrid} className="compat-grid">
+              <div style={S.compatGood}>
+                <div style={S.compatHead}>✅ Works great on</div>
+                <div style={S.compatItem}><span style={S.compatUrl}>news.ycombinator.com</span></div>
+                <div style={S.compatItem}><span style={S.compatUrl}>craigslist.org</span></div>
+                <div style={S.compatItem}><span style={S.compatUrl}>wikipedia.org</span></div>
+                <div style={{ ...S.compatItem, fontStyle: 'italic', color: '#aaa' }}>blogs, docs, static sites</div>
               </div>
-              <div style={S.exLabel}>Try an example</div>
-              <div style={S.exGrid} className="example-grid">
-                <div style={S.exCard} onClick={tryHN}>
-                  <div style={S.exTop}><span style={S.exBadgeFree}>⚡ FREE</span></div>
-                  <div style={S.exUrl}>news.ycombinator.com</div>
-                  <div style={S.exDesc}>Simple HTML — free mode captures this perfectly</div>
-                  <span style={S.exArrow}>→</span>
-                </div>
-                <div style={S.exCardSpa} onClick={tryLinear}>
-                  <div style={S.exTop}><span style={S.exBadgeAi}>🧠 NEEDS AI</span></div>
-                  <div style={S.exUrl}>linear.app</div>
-                  <div style={S.exDesc}>React SPA — see what free mode misses</div>
-                  <span style={S.exArrow}>→</span>
-                </div>
+              <div style={S.compatNeeds}>
+                <div style={{ ...S.compatHead, color: '#92400e' }}>⚠️ Needs AI mode</div>
+                <div style={S.compatItem}><span style={S.compatUrl}>linear.app</span></div>
+                <div style={S.compatItem}><span style={S.compatUrl}>figma.com</span></div>
+                <div style={S.compatItem}><span style={S.compatUrl}>notion.so</span></div>
+                <div style={{ ...S.compatItem, fontStyle: 'italic', color: '#aaa' }}>dashboards, SPAs, React apps</div>
+              </div>
+            </div>
+            <div style={S.exLabel}>Try an example</div>
+            <div style={S.exGrid} className="example-grid">
+              <div style={S.exCard} onClick={tryHN}>
+                <div style={S.exTop}><span style={S.exBadgeFree}>⚡ FREE</span></div>
+                <div style={S.exUrl}>news.ycombinator.com</div>
+                <div style={S.exDesc}>Simple HTML — free mode captures this perfectly</div>
+                <span style={S.exArrow}>→</span>
+              </div>
+              <div style={S.exCardSpa} onClick={tryLinear}>
+                <div style={S.exTop}><span style={S.exBadgeAi}>🧠 NEEDS AI</span></div>
+                <div style={S.exUrl}>linear.app</div>
+                <div style={S.exDesc}>React SPA — see what free mode misses</div>
+                <span style={S.exArrow}>→</span>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </section>
   );
@@ -103,7 +90,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
 
 const MODES = [
   { id: 'quick', emoji: '⚡', label: 'Free', disabled: false },
-  { id: 'ai', emoji: '🧠', label: 'AI', disabled: false },
+  { id: 'ai', emoji: '🧠', label: 'AI', disabled: true },
   { id: 'upload', emoji: '📸', label: 'AI + Screenshot', disabled: true },
 ];
 
@@ -120,9 +107,7 @@ const S = {
   chipDisabled: { opacity: 0.4, cursor: 'default', pointerEvents: 'none' },
   soon: { fontSize: 8, fontWeight: 700, background: '#7c5cfc', color: '#fff', padding: '2px 6px', borderRadius: 50, marginLeft: 4, letterSpacing: '.3px' },
   modeDesc: { fontSize: 13, color: '#999', marginTop: 12, lineHeight: 1.5 },
-  creditNote: { marginTop: 8, fontSize: 12, color: '#7c5cfc', fontWeight: 600 },
-  freeGroup: { border: '2px solid #eee', borderRadius: 16, marginTop: 16, overflow: 'hidden', transition: 'opacity .3s' },
-  freeGroupDimmed: { opacity: .4, pointerEvents: 'none' },
+  freeGroup: { border: '2px solid #eee', borderRadius: 16, marginTop: 16, overflow: 'hidden' },
   freeLabel: { background: '#f8f8f8', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 6 },
   freeBadge: { background: '#1a1a1a', color: '#fff', fontSize: 9, padding: '2px 8px', borderRadius: 50, fontWeight: 700 },
   freeBody: { padding: 16 },

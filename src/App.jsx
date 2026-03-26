@@ -99,42 +99,12 @@ export default function App() {
     catch (err) { console.error('Sign-out error:', err); }
   }, [toast]);
 
-  // AI URL mode — Browserless headless Chrome capture
-  const callBrowserCapture = async (url, host) => {
-    setLoading(true);
-    setResult({ type: 'ai-loading', host });
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const response = await fetch('/.netlify/functions/snapshot-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ url, mode: 'ai' }),
-      });
-
-      const data = await response.json();
-      if (!data.ok) {
-        toast(data.error || 'Capture failed.');
-        setResult(null);
-      } else {
-        if (data.creditsRemaining != null) setCredits(data.creditsRemaining);
-        setResult({ type: 'ai-success', host, html: data.html, sizeKB: data.sizeKB });
-      }
-    } catch (err) {
-      console.error('AI snapshot failed:', err);
-      setResult(null);
-      toast('Capture failed — try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSnapshot = useCallback((url, exampleType) => {
     requireAuth(async () => {
       if (!url?.trim()) { toast('Paste a URL first!'); return; }
-      if (loading) return; // prevent double-clicks
 
-      if (mode === 'upload') {
-        toast('Screenshot mode coming soon!');
+      if (mode === 'ai' || mode === 'upload') {
+        toast('AI mode coming soon!');
         return;
       }
 
@@ -143,40 +113,29 @@ export default function App() {
       try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
       const isSpa = SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa';
 
-      if (mode === 'quick') {
-        if (isSpa) { setResult({ type: 'linear-blocked', host }); return; }
+      if (isSpa) { setResult({ type: 'linear-blocked', host }); return; }
 
-        if (!canUseFreeToday(freeUsedToday)) {
-          if (credits >= 1) {
-            toast('Free limit reached — using 1 AI credit instead.');
-            await callBrowserCapture(url, host);
-            return;
-          }
-          toast('Free limit reached — 1 per day. Get AI credits for unlimited snapshots!');
-          return;
-        }
+      if (!canUseFreeToday(freeUsedToday)) {
+        toast('Free limit reached — 1 per day. AI mode coming soon!');
+        return;
+      }
 
-        setLoading(true);
-        setResult({ type: 'loading', host });
-        try {
-          const { html, sizeKB } = await fetchAndClean(url);
-          await markFreeUsed(user.uid);
-          setFreeUsedToday(new Date().toISOString().slice(0, 10));
-          setResult({ type: 'free-success', host, html, sizeKB });
-        } catch (err) {
-          console.error('Snapshot failed:', err);
-          setResult(null);
-          toast(err.message || 'Failed to capture — try a different URL.');
-        } finally {
-          setLoading(false);
-        }
-
-      } else if (mode === 'ai') {
-        if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
-        await callBrowserCapture(url, host);
+      setLoading(true);
+      setResult({ type: 'loading', host });
+      try {
+        const { html, sizeKB } = await fetchAndClean(url);
+        await markFreeUsed(user.uid);
+        setFreeUsedToday(new Date().toISOString().slice(0, 10));
+        setResult({ type: 'free-success', host, html, sizeKB });
+      } catch (err) {
+        console.error('Snapshot failed:', err);
+        setResult(null);
+        toast(err.message || 'Failed to capture — try a different URL.');
+      } finally {
+        setLoading(false);
       }
     });
-  }, [mode, credits, freeUsedToday, user, requireAuth, toast, loading]);
+  }, [mode, freeUsedToday, user, requireAuth, toast]);
 
   const handleDismissStamp = useCallback(() => {
     setResult(r => r ? { ...r, type: 'linear-dismissed' } : r);
@@ -188,8 +147,8 @@ export default function App() {
       <Nav user={user} credits={credits} onSignIn={() => setAuthOpen(true)} onSignOut={handleSignOut} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={handleSignIn} />
       <Hero />
-      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} loading={loading} />
-      <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
+      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} />
+      <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => toast('AI mode coming soon!')} toast={toast} />
       <Pricing />
       <Features />
       <Footer />
