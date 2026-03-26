@@ -2,6 +2,7 @@
 // AI snapshot generation. Server-side: auth verify, credit check/deduct, fetch URL, Claude API call.
 // Per rules.md: server-side credit check before any AI call — never trust the client.
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fetch from 'node-fetch';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
