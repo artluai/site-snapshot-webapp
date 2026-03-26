@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>snapshot — freeze any website</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#fafafa;color:#1a1a1a;min-height:100vh;overflow-x:hidden}
+a{color:#1a1a1a;text-decoration:none}
+
+/* nav */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;max-width:1200px;margin:0 auto}
+.nav-logo{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-1px;display:flex;align-items:center;gap:8px}
+.nav-logo .icon{width:32px;height:32px;background:#1a1a1a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.nav-links{display:flex;gap:6px}
+.nav-pill{background:#1a1a1a;color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;padding:10px 22px;border-radius:50px;cursor:pointer;letter-spacing:-.2px}
+.nav-pill.outline{background:transparent;color:#1a1a1a;border:2px solid #1a1a1a}
+
+/* hero */
+.hero{max-width:1200px;margin:0 auto;padding:40px 40px 0;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;min-height:480px}
+.hero-text h1{font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:700;line-height:1.05;letter-spacing:-3px;margin-bottom:16px}
+.hero-text h1 .mint{color:#1a1a1a;background:#c4f5e1;padding:0 8px;border-radius:6px;display:inline}
+.hero-text h1 .yellow{color:#1a1a1a;background:#fef3a0;padding:0 8px;border-radius:6px;display:inline}
+.hero-text p{font-size:18px;color:#666;line-height:1.6;margin-bottom:28px;max-width:440px}
+.hero-visual{background:#c4f5e1;border-radius:24px;padding:32px;position:relative;min-height:400px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hero-browser{background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.08);width:100%;max-width:420px;overflow:hidden}
+.hero-browser-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid #eee}
+.hb-dot{width:10px;height:10px;border-radius:50%}
+.hero-browser-url{flex:1;background:#f5f5f5;border-radius:6px;padding:6px 12px;font-size:11px;color:#999;margin-left:8px}
+.hero-browser-body{padding:20px;min-height:200px;background:#fafafa;font-size:11px;color:#aaa;display:flex;align-items:center;justify-content:center}
+.float-tag{position:absolute;background:#1a1a1a;color:#fff;font-size:11px;font-weight:600;padding:6px 14px;border-radius:50px;letter-spacing:.3px}
+.float-tag.t1{top:20px;right:20px}
+.float-tag.t2{bottom:20px;left:20px;background:#7c5cfc;transform:rotate(-3deg)}
+.float-tag.t3{bottom:60px;right:30px;background:#ff6b6b;transform:rotate(2deg)}
+
+/* input section */
+.input-section{max-width:1200px;margin:0 auto;padding:50px 40px}
+.input-card{background:#fff;border:2px solid #eee;border-radius:20px;padding:36px;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.input-label{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px;letter-spacing:-.3px}
+.input-row{display:flex;gap:10px}
+.url-field{flex:1;border:2px solid #eee;border-radius:14px;padding:16px 20px;font-family:inherit;font-size:15px;outline:none;transition:border .2s;color:#1a1a1a}
+.url-field:focus{border-color:#1a1a1a}
+.url-field::placeholder{color:#bbb}
+.snap-btn{background:#1a1a1a;color:#fff;border:none;border-radius:14px;padding:16px 32px;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:-.3px;transition:transform .15s,box-shadow .15s}
+.snap-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.15)}
+
+/* mode switcher */
+.modes-row{display:flex;gap:8px;margin-top:20px}
+.mode-chip{background:#f5f5f5;border:none;border-radius:50px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;color:#888;cursor:pointer;transition:all .2s}
+.mode-chip.active{background:#1a1a1a;color:#fff}
+.mode-chip .emoji{margin-right:4px}
+.mode-desc{font-size:13px;color:#999;margin-top:12px;line-height:1.5}
+
+/* results */
+.results{max-width:1200px;margin:0 auto;padding:0 40px 40px}
+
+/* status card */
+.status-card{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:16px;padding:20px 24px;margin-bottom:20px}
+.status-item{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:13px;color:#333}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.done{background:#22c55e}
+.status-dot.working{background:#7c5cfc;animation:pulse 1.5s ease infinite}
+.status-dot.warn{background:#f59e0b}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* preview */
+.preview-card{background:#fff;border:2px solid #eee;border-radius:20px;overflow:hidden;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.preview-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#fafafa;border-bottom:1px solid #eee}
+.pb-dots{display:flex;gap:5px}
+.pb-dot{width:10px;height:10px;border-radius:50%}
+.preview-title{flex:1;font-size:12px;color:#999;font-weight:500}
+.preview-frame{height:360px;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:14px}
+
+/* action buttons */
+.actions-row{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.action-btn{border-radius:50px;padding:12px 24px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:-.2px;transition:all .15s;border:2px solid transparent}
+.action-btn.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.action-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.action-btn.ghost{background:#fff;color:#1a1a1a;border-color:#ddd}
+.action-btn.ghost:hover{border-color:#1a1a1a}
+
+/* enhance banner */
+.enhance-card{background:linear-gradient(135deg,#f0e6ff 0%,#e6f0ff 50%,#f0fdf4 100%);border:2px solid #e2d8f5;border-radius:20px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.enhance-text h3{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
+.enhance-text p{font-size:13px;color:#666;line-height:1.5}
+.enhance-btn{background:#7c5cfc;color:#fff;border:none;border-radius:50px;padding:14px 28px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:-.3px;transition:transform .15s,box-shadow .15s}
+.enhance-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,92,252,.3)}
+
+/* upload section */
+.upload-zone{border:2px dashed #ddd;border-radius:20px;padding:48px 32px;text-align:center;transition:border-color .2s;cursor:pointer;margin-bottom:16px}
+.upload-zone:hover{border-color:#7c5cfc}
+.upload-icon{font-size:36px;margin-bottom:8px}
+.upload-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px}
+.upload-hint{font-size:12px;color:#999}
+.or-divider{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.or-line{flex:1;height:1px;background:#eee}
+.or-text{font-size:12px;color:#bbb;font-weight:600}
+
+/* features strip */
+.features{background:#1a1a1a;color:#fff;padding:60px 40px;margin-top:40px}
+.features-inner{max-width:1200px;margin:0 auto}
+.features h2{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:700;letter-spacing:-2px;margin-bottom:32px;line-height:1.1}
+.features h2 .purple{color:#c4b5fd}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat-card{background:#2a2a2a;border-radius:16px;padding:24px}
+.feat-emoji{font-size:28px;margin-bottom:10px}
+.feat-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;letter-spacing:-.3px}
+.feat-desc{font-size:13px;color:#999;line-height:1.5}
+
+/* footer */
+.footer{max-width:1200px;margin:0 auto;padding:24px 40px;display:flex;justify-content:space-between;font-size:12px;color:#bbb}
+.footer a{color:#888}
+
+/* pages */
+.pg{display:none}.pg.a{display:block}
+
+/* responsive */
+@media(max-width:768px){
+.hero{grid-template-columns:1fr;padding:24px 20px 0;min-height:auto}
+.hero-text h1{font-size:40px;letter-spacing:-2px}
+.hero-visual{min-height:280px;border-radius:16px;padding:20px}
+.nav{padding:16px 20px}
+.input-section,.results{padding-left:20px;padding-right:20px}
+.input-card{padding:24px}
+.input-row{flex-direction:column}
+.snap-btn{width:100%}
+.feat-grid{grid-template-columns:1fr}
+.upload-grid{grid-template-columns:1fr!important}
+.pricing-grid{grid-template-columns:1fr!important}
+.enhance-card{flex-direction:column;text-align:center}
+.features{padding:40px 20px}
+.features h2{font-size:28px}
+.footer{padding:24px 20px;flex-direction:column;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+<div class="nav-logo"><div class="icon">S</div> snapshot</div>
+<div class="nav-links">
+<button class="nav-pill outline">pricing</button>
+<button class="nav-pill">get credits</button>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+<div class="hero-text">
+<h1><span class="mint">SAVE</span> A COPY OF <span class="yellow">ANY WEBSITE</span> IN SECONDS</h1>
+<p>Paste a link. Get a perfect copy you can download, share, or keep forever. No login. No install. Just paste and go.</p>
+<button class="snap-btn" style="font-size:16px;padding:18px 36px" onclick="document.querySelector('.input-section').scrollIntoView({behavior:'smooth'})">TRY IT FREE →</button>
+</div>
+<div class="hero-visual">
+<div class="hero-browser">
+<div class="hero-browser-bar">
+<span class="hb-dot" style="background:#ff6b6b"></span>
+<span class="hb-dot" style="background:#fbbf24"></span>
+<span class="hb-dot" style="background:#22c55e"></span>
+<div class="hero-browser-url">snapshot — example.com</div>
+</div>
+<div class="hero-browser-body">
+<div style="text-align:center">
+<div style="font-size:32px;margin-bottom:8px">📸</div>
+<div style="font-size:13px;color:#aaa">your copy previews here</div>
+</div>
+</div>
+</div>
+<div class="float-tag t1">ONE FILE ✓</div>
+<div class="float-tag t2">WORKS OFFLINE ⚡</div>
+<div class="float-tag t3">FREE TO START</div>
+</div>
+</section>
+
+<!-- INPUT -->
+<section class="input-section">
+<div class="input-card">
+<div class="input-label">PASTE A LINK TO GET STARTED</div>
+<div class="input-row">
+<input class="url-field" placeholder="https://any-website.com" />
+<button class="snap-btn" onclick="showResult('quick')">SAVE COPY →</button>
+</div>
+<div class="modes-row">
+<button class="mode-chip active" onclick="switchMode('quick',this)"><span class="emoji">⚡</span>Free</button>
+<button class="mode-chip" onclick="switchMode('ai',this)"><span class="emoji">🧠</span>AI</button>
+<button class="mode-chip" onclick="switchMode('upload',this)"><span class="emoji">📸</span>AI + Screenshot</button>
+</div>
+<div id="mode-info">
+<div id="quick-info" class="pg a"><div class="mode-desc">Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong>Free, 1 per day.</strong> Works great for simple sites. Won't work on apps that load with JavaScript (like dashboards or SPAs). For those, use AI or AI + Screenshot.</div></div>
+<div id="ai-info" class="pg"><div class="mode-desc">AI reads the page like a designer would — matches colors, fonts, spacing, and rebuilds the layout from scratch. Adds a desktop/mobile switcher, working tabs, and clickable navigation. <strong>1 credit per snapshot.</strong> Takes ~20 seconds.<div style="margin-top:8px;font-size:12px;color:#7c5cfc;font-weight:600">5 credits for $9.99 · 20 credits for $29.99</div></div></div>
+<div id="upload-info" class="pg"><div class="mode-desc">Don't have a link? Drop a screenshot of the desktop view and (optionally) the mobile view. AI analyzes the image and rebuilds the entire site from what it sees — layout, colors, fonts, content. <strong>1 credit per snapshot.</strong><div style="margin-top:8px;font-size:12px;color:#7c5cfc;font-weight:600">5 credits for $9.99 · 20 credits for $29.99</div></div></div>
+</div>
+</div>
+</section>
+
+<!-- RESULTS -->
+<section class="results">
+
+<!-- Quick result -->
+<div id="quick-result" class="pg a">
+<div class="status-card">
+<div class="status-item"><span class="status-dot done"></span> Fetched https://example.com — 42KB</div>
+<div class="status-item"><span class="status-dot done"></span> Stripped 12 scripts, 3 tracking pixels</div>
+<div class="status-item"><span class="status-dot done"></span> Inlined 2 stylesheets — 8.4KB CSS</div>
+<div class="status-item"><span class="status-dot done"></span> Snapshot ready — 23KB single file</div>
+</div>
+
+<div class="preview-card">
+<div class="preview-bar">
+<div class="pb-dots"><span class="pb-dot" style="background:#ff6b6b"></span><span class="pb-dot" style="background:#fbbf24"></span><span class="pb-dot" style="background:#22c55e"></span></div>
+<span class="preview-title">snapshot — example.com</span>
+</div>
+<div class="preview-frame">[live preview of your snapshot]</div>
+</div>
+
+<div class="actions-row">
+<button class="action-btn primary">↓ DOWNLOAD HTML</button>
+<button class="action-btn ghost">COPY TO CLIPBOARD</button>
+<button class="action-btn ghost">VIEW SOURCE</button>
+</div>
+
+<div class="enhance-card">
+<div class="enhance-text">
+<h3>This is the basic version ⚡</h3>
+<p>It works for simple sites, but won't catch JavaScript-rendered content, custom fonts, or interactive elements. AI mode rebuilds the page from scratch — matching the real design, adding working navigation and a mobile preview.</p>
+</div>
+<button class="enhance-btn">UPGRADE TO AI — 1 CREDIT →</button>
+</div>
+</div>
+
+<!-- AI result -->
+<div id="ai-result" class="pg">
+<div class="status-card" style="background:#f5f0ff;border-color:#e2d8f5">
+<div class="status-item"><span class="status-dot done"></span> Fetched page — 42KB HTML</div>
+<div class="status-item"><span class="status-dot done"></span> Extracted design system — 14 colors, DM Sans, 16px/14px</div>
+<div class="status-item"><span class="status-dot working"></span> Claude is analyzing layout and generating snapshot...</div>
+<div style="padding-left:18px;font-size:12px;color:#999;margin-top:4px">identifying components · building structure · inlining styles · adding responsive toggle</div>
+</div>
+
+<div class="preview-card">
+<div class="preview-bar">
+<div class="pb-dots"><span class="pb-dot" style="background:#ff6b6b"></span><span class="pb-dot" style="background:#fbbf24"></span><span class="pb-dot" style="background:#22c55e"></span></div>
+<span class="preview-title">AI snapshot — example.com</span>
+</div>
+<div class="preview-frame" style="height:420px">[AI-generated snapshot with responsive toggle, tabs, interactions]</div>
+</div>
+
+<div class="actions-row">
+<button class="action-btn primary">↓ DOWNLOAD HTML</button>
+<button class="action-btn ghost">COPY TO CLIPBOARD</button>
+<button class="action-btn ghost">VIEW SOURCE</button>
+<button class="action-btn ghost">COMPARE WITH QUICK</button>
+</div>
+</div>
+
+<!-- Upload -->
+<div id="upload-result" class="pg">
+<div class="upload-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+<div class="upload-zone" style="padding:36px 24px">
+<div class="upload-icon">🖥️</div>
+<div class="upload-title">Desktop view</div>
+<div class="upload-hint">Drop or paste a screenshot of the full-width site</div>
+</div>
+<div class="upload-zone" style="padding:36px 24px">
+<div class="upload-icon">📱</div>
+<div class="upload-title">Mobile view</div>
+<div class="upload-hint">Drop or paste a screenshot of the phone layout</div>
+</div>
+</div>
+<div style="font-size:12px;color:#999;text-align:center;margin-bottom:20px">Desktop is required. Mobile is optional but gives you a working responsive toggle.</div>
+<div class="status-card" style="background:#f5f0ff;border-color:#e2d8f5">
+<div class="status-item"><span class="status-dot done"></span> Desktop screenshot uploaded — 1440×900</div>
+<div class="status-item"><span class="status-dot done"></span> Mobile screenshot uploaded — 390×844</div>
+<div class="status-item"><span class="status-dot done"></span> Detected: dark theme, monospace font, table layout, 5 nav items</div>
+<div class="status-item"><span class="status-dot working"></span> AI is rebuilding the site from your screenshots...</div>
+</div>
+</div>
+
+</section>
+
+<!-- PRICING -->
+<section style="max-width:1200px;margin:0 auto;padding:50px 40px">
+<div style="text-align:center;margin-bottom:32px">
+<h2 style="font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;letter-spacing:-2px;margin-bottom:8px">SIMPLE PRICING</h2>
+<p style="font-size:15px;color:#888">Free mode is free forever. AI credits never expire.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;margin:0 auto" class="pricing-grid">
+
+<div style="background:#fff;border:2px solid #eee;border-radius:20px;padding:32px 24px;text-align:center">
+<div style="font-size:28px;margin-bottom:8px">⚡</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px">FREE</div>
+<div style="font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin-bottom:4px">$0</div>
+<div style="font-size:13px;color:#999;margin-bottom:20px">1 basic snapshot per day</div>
+<div style="font-size:12px;color:#666;line-height:1.8;text-align:left">
+✓ Instant results<br>
+✓ Clean single-file output<br>
+✓ Runs in your browser<br>
+✗ <span style="color:#ccc">No AI analysis</span><br>
+✗ <span style="color:#ccc">No responsive toggle</span><br>
+✗ <span style="color:#ccc">Won't work on SPAs</span>
+</div>
+</div>
+
+<div style="background:#fff;border:2px solid #7c5cfc;border-radius:20px;padding:32px 24px;text-align:center;position:relative;box-shadow:0 4px 24px rgba(124,92,252,.12)">
+<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#7c5cfc;color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:50px;letter-spacing:.5px">MOST POPULAR</div>
+<div style="font-size:28px;margin-bottom:8px">🧠</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px">STARTER</div>
+<div style="font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin-bottom:4px">$9<span style="font-size:18px;color:#888">.99</span></div>
+<div style="font-size:13px;color:#999;margin-bottom:20px">5 AI credits · $2 each</div>
+<div style="font-size:12px;color:#666;line-height:1.8;text-align:left">
+✓ Everything in Free<br>
+✓ AI design analysis<br>
+✓ Responsive desktop/mobile<br>
+✓ Working tabs & navigation<br>
+✓ Screenshot rebuild<br>
+✓ Credits never expire
+</div>
+<button style="margin-top:20px;width:100%;background:#7c5cfc;color:#fff;border:none;border-radius:50px;padding:12px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer">GET 5 CREDITS →</button>
+</div>
+
+<div style="background:#fff;border:2px solid #eee;border-radius:20px;padding:32px 24px;text-align:center">
+<div style="font-size:28px;margin-bottom:8px">🚀</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px">PRO PACK</div>
+<div style="font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif;margin-bottom:4px">$29<span style="font-size:18px;color:#888">.99</span></div>
+<div style="font-size:13px;color:#999;margin-bottom:20px">20 AI credits · $1.50 each</div>
+<div style="font-size:12px;color:#666;line-height:1.8;text-align:left">
+✓ Everything in Starter<br>
+✓ 4× more credits<br>
+✓ 25% cheaper per snapshot<br>
+✓ Priority processing<br>
+✓ Credits never expire<br>
+&nbsp;
+</div>
+<button style="margin-top:20px;width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:50px;padding:12px;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;cursor:pointer">GET 20 CREDITS →</button>
+</div>
+
+</div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+<div class="features-inner">
+<h2>SAVE IT. SHARE IT.<br><span class="purple">KEEP IT FOREVER.</span></h2>
+<div class="feat-grid">
+<div class="feat-card">
+<div class="feat-emoji">📄</div>
+<div class="feat-title">ONE FILE, THAT'S IT</div>
+<div class="feat-desc">Your copy is a single file. Open it in any browser, email it, save it to your desktop. It just works.</div>
+</div>
+<div class="feat-card">
+<div class="feat-emoji">📱</div>
+<div class="feat-title">DESKTOP & MOBILE</div>
+<div class="feat-desc">Built-in switcher lets you preview how the site looks on phone vs. computer. Both views in one file.</div>
+</div>
+<div class="feat-card">
+<div class="feat-emoji">🗂️</div>
+<div class="feat-title">KEEPS ALL THE PAGES</div>
+<div class="feat-desc">Tabs, menus, dropdowns — everything clickable stays clickable in your copy. Not just a screenshot.</div>
+</div>
+<div class="feat-card">
+<div class="feat-emoji">🎨</div>
+<div class="feat-title">LOOKS IDENTICAL</div>
+<div class="feat-desc">AI mode matches the exact colors, fonts, and spacing. Your copy looks like the real thing.</div>
+</div>
+<div class="feat-card">
+<div class="feat-emoji">📸</div>
+<div class="feat-title">NO LINK? SCREENSHOT IT</div>
+<div class="feat-desc">Drop a desktop and mobile screenshot. AI rebuilds the full site from the images — layout, colors, fonts, everything.</div>
+</div>
+<div class="feat-card">
+<div class="feat-emoji">🔒</div>
+<div class="feat-title">PRIVATE & FREE</div>
+<div class="feat-desc">Quick mode runs entirely on your device. Nothing leaves your browser. AI mode is optional.</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- FOOTER -->
+<div class="footer">
+<span>built with the <a href="#">site-snapshot</a> Claude skill</span>
+<span>by <a href="#">artlu.ai</a> — 100 projects in 100 days</span>
+</div>
+
+<script>
+function switchMode(id,el){
+document.querySelectorAll('.mode-chip').forEach(c=>c.classList.remove('active'));
+el.classList.add('active');
+document.querySelectorAll('#mode-info .pg').forEach(p=>p.classList.remove('a'));
+document.getElementById(id+'-info').classList.add('a');
+document.querySelectorAll('.results .pg').forEach(p=>p.classList.remove('a'));
+document.getElementById(id+'-result').classList.add('a');
+}
+function showResult(mode){
+document.querySelectorAll('.results .pg').forEach(p=>p.classList.remove('a'));
+document.getElementById(mode+'-result').classList.add('a');
+document.querySelector('.results').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>
