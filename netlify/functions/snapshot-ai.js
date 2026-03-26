@@ -23,45 +23,31 @@ const HEADERS = {
 
 const MAX_HTML = 150 * 1024; // 150KB cap on source HTML
 
-const SYSTEM_PROMPT = `You are a website snapshot generator. Rebuild the provided HTML as a single frozen file.
+const SYSTEM_PROMPT = `Website snapshot generator. Rebuild provided HTML as ONE frozen file. Prioritize accuracy and completeness.
 
 RULES:
-1. Single HTML file. All CSS in one <style> block. No external CSS/JS.
-2. Only external deps: Google Fonts CDN.
-3. Use actual content from source. Realistic placeholders for dynamic content.
-4. Match the source theme (dark/light), colors, fonts, spacing exactly.
-5. Include responsive Desktop/Mobile toggle widget (code below).
-6. If multiple pages/tabs exist, include all with JS show/hide.
-7. iframe-safe. No target="_top".
-8. ALL interactive elements must work: dropdowns, accordions, modals, hamburger nav, toggles, tabs.
-9. EVERY repeated element must be interactive — all rows expand, not just the first.
-10. Write responsive rules TWICE: @media queries AND .mobile class rules for the toggle.
+1. Single file. All CSS in one <style>. No external CSS/JS. Google Fonts CDN only.
+2. Match source EXACTLY: colors, fonts, font sizes, spacing, padding, margins, borders, shadows, gradients.
+3. Include ALL visible content from source. Every heading, paragraph, link, image placeholder, nav item.
+4. For repeated content (lists, tables, cards): include all items visible in the source, up to 30. Use real content from the source, not placeholders.
+5. Include responsive toggle widget (below). Write responsive rules TWICE: @media AND .mobile class.
+6. If tabs/pages exist, include all with show/hide. iframe-safe.
+7. Wire ALL interactive elements with vanilla JS: dropdowns (click open, outside close), accordions, modals (X/backdrop/Esc), hamburger nav, tabs, sortable headers, filters, toggle switches, carousels.
+8. EVERY repeated interactive element must work — all rows expand, not just the first.
+9. Replace external images with inline SVG placeholders that match the approximate size and shape.
+10. Preserve the exact visual hierarchy: which text is bold, which is muted, which is a link, relative sizing.
 
-INTERACTIVE PATTERNS (use vanilla JS, no frameworks):
-- Tabs: .pg{display:none}.pg.a{display:block} with go(id,el) toggling .a class
-- Dropdowns: click to open (.dd.open), click outside to close via document listener
-- Accordions: .acc.open toggles .acc-body visibility, rotate chevron
-- Modals: .modal-bg.open with close on X, backdrop click, Escape key
-- Hamburger: .mob-menu.open toggle, hidden on desktop, visible on mobile
-- Tooltips: pure CSS with ::after and :hover
-- Sortable tables: onclick on th, sort tbody rows
-- Filters: .pill.a toggles, show/hide .item by data-tags
+TOGGLE WIDGET — always include, wrap content in <div id="snap-wrapper">:
+<div id="snap-toggle" style="position:fixed;bottom:16px;right:16px;z-index:99999;display:flex;gap:4px;background:rgba(0,0,0,.7);padding:4px;border-radius:6px;font-family:system-ui;font-size:11px"><button onclick="setView('desktop')" id="snap-dt" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#fff;color:#000;font-size:11px">Desktop</button><button onclick="setView('mobile')" id="snap-mb" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#999;font-size:11px">Mobile</button></div>
+<script>function setView(m){var w=document.getElementById('snap-wrapper'),d=document.getElementById('snap-dt'),b=document.getElementById('snap-mb');if(m==='mobile'){w.classList.add('mobile');w.style.maxWidth='390px';w.style.margin='0 auto';b.style.background='#fff';b.style.color='#000';d.style.background='transparent';d.style.color='#999'}else{w.classList.remove('mobile');w.style.maxWidth='';w.style.margin='';d.style.background='#fff';d.style.color='#000';b.style.background='transparent';b.style.color='#999'}}</script>
 
-RESPONSIVE TOGGLE — always include:
-<div id="snap-toggle" style="position:fixed;bottom:16px;right:16px;z-index:99999;display:flex;gap:4px;background:rgba(0,0,0,0.7);padding:4px;border-radius:6px;font-family:system-ui;font-size:11px;"><button onclick="setView('desktop')" id="snap-dt" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#fff;color:#000;font-size:11px;">Desktop</button><button onclick="setView('mobile')" id="snap-mb" style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:transparent;color:#999;font-size:11px;">Mobile</button></div>
-<script>function setView(m){var w=document.getElementById('snap-wrapper'),dt=document.getElementById('snap-dt'),mb=document.getElementById('snap-mb');if(m==='mobile'){w.classList.add('mobile');w.style.maxWidth='390px';w.style.margin='0 auto';mb.style.background='#fff';mb.style.color='#000';dt.style.background='transparent';dt.style.color='#999';}else{w.classList.remove('mobile');w.style.maxWidth='';w.style.margin='';dt.style.background='#fff';dt.style.color='#000';mb.style.background='transparent';mb.style.color='#999';}}</script>
-
-Wrap all content in <div id="snap-wrapper">.
-
-RESPOND WITH ONLY HTML. No explanation, no markdown fences. Start with <!DOCTYPE html>, end with </html>.`;
+OUTPUT: Only HTML. No explanation. No markdown. Start <!DOCTYPE html>, end </html>.`;
 
 const SCREENSHOT_ADDITION = `
-SCREENSHOT MODE: You are rebuilding from images, not HTML.
-1. Identify layout, colors (estimate hex), fonts (family/size/weight), all visible text, spacing.
-2. Detect interactive elements from visual cues: chevrons=accordions, hamburger=mobile nav, ...menus=dropdowns, tab bars, sort arrows.
-3. Build ALL detected interactions as working elements.
-4. For monospace on dark: try IBM Plex Mono, Fira Code, JetBrains Mono.
-5. Dark theme backgrounds: #000, #0a0b0c, #111, #1a1a1a.`;
+SCREENSHOT MODE: Rebuilding from images, not HTML.
+- Identify: layout, colors (hex), fonts, all visible text, spacing.
+- Detect interactivity from visual cues: chevrons=accordions, hamburger=nav, ...=dropdowns, tabs, sort arrows.
+- Build ALL detected interactions. Monospace dark themes: IBM Plex Mono, Fira Code. Backgrounds: #000, #111, #1a1a1a.`;
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') {
@@ -191,7 +177,7 @@ export default async function handler(req) {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 12000,
+          max_tokens: 32000,
           stream: true,
           system: systemPrompt,
           messages,

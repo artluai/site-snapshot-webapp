@@ -131,6 +131,16 @@ export default function App() {
       return { ok: false, error: 'AI did not return valid HTML — try again' };
     }
 
+    // Handle truncated output — close open tags so it still renders
+    if (!html.includes('</html>')) {
+      html += '\n</div></body></html>';
+    }
+    if (!html.includes('</body>') && html.includes('<body')) {
+      html = html.replace('</html>', '</body></html>');
+    }
+
+    if (!sizeKB) sizeKB = Math.round(new Blob([html]).size / 1024);
+
     return { ok: true, html, sizeKB, creditsRemaining };
   };
 
