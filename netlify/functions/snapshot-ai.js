@@ -207,22 +207,27 @@ export default async function handler(req) {
       // Fetch the URL
       let fetchedHtml;
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(fullUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; SnapshotBot/1.0)',
-            'Accept': 'text/html,application/xhtml+xml',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
           },
           redirect: 'follow',
-          signal: AbortSignal.timeout(6000), // 6s timeout for fetch (leaves ~18s for Claude)
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
         if (!res.ok) {
           await userRef.update({ credits: FieldValue.increment(1) });
           return new Response(JSON.stringify({ ok: false, error: `Site returned ${res.status}` }), { status: 502, headers: HEADERS });
         }
         fetchedHtml = await res.text();
       } catch (fetchErr) {
+        console.error('[snapshot-ai] fetch error:', fetchErr.name, fetchErr.message);
         await userRef.update({ credits: FieldValue.increment(1) });
-        const msg = fetchErr.name === 'TimeoutError' ? 'Site took too long to respond' : 'Failed to fetch the page';
+        const msg = fetchErr.name === 'AbortError' ? 'Site took too long to respond' : `Failed to fetch the page: ${fetchErr.message}`;
         return new Response(JSON.stringify({ ok: false, error: msg }), { status: 502, headers: HEADERS });
       }
 
