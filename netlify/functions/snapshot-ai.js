@@ -21,7 +21,7 @@ const HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const MAX_HTML = 50 * 1024; // 50KB cap — Claude only needs the head + main content to rebuild
+const MAX_HTML = 150 * 1024; // 150KB cap — Tier 2 handles this easily
 
 const SYSTEM_PROMPT = `Website snapshot generator. Rebuild provided HTML as ONE frozen file. Prioritize accuracy and completeness.
 
