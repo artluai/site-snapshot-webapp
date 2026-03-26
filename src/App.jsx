@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
-import { loadOrCreateUser, canUseFreeToday, markFreeUsed, deductCredit } from './lib/credits.js';
+import { loadOrCreateUser, canUseFreeToday, markFreeUsed } from './lib/credits.js';
 import { fetchAndClean } from './lib/snapshot-free.js';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
@@ -65,7 +65,6 @@ export default function App() {
   const handleSignIn = useCallback(async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged handles the rest
       setAuthOpen(false);
       toast('Signed in!');
     } catch (err) {
@@ -94,11 +93,13 @@ export default function App() {
 
   const handleSnapshot = useCallback((url, exampleType) => {
     requireAuth(async () => {
-      if (!url?.trim()) { toast('Paste a URL first!'); return; }
+      if (mode !== 'upload' && !url?.trim()) { toast('Paste a URL first!'); return; }
 
       const SPA_HOSTS = ['linear.app', 'figma.com', 'notion.so'];
       let host = '';
-      try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
+      if (url) {
+        try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
+      }
       const isSpa = SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa';
 
       if (mode === 'quick') {
@@ -132,20 +133,76 @@ export default function App() {
         }
 
       } else if (mode === 'ai') {
-        if (credits < 1) { toast('No credits!'); return; }
+        // AI mode — call the Netlify function (server-side credit check)
+        if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
+
+        setLoading(true);
+        setResult({ type: 'ai-loading', host });
         try {
-          const newCredits = await deductCredit(user.uid, credits);
-          setCredits(newCredits);
-          setResult({ type: 'linear-ai', host });
+          const token = await auth.currentUser.getIdToken();
+          const res = await fetch('/.netlify/functions/snapshot-ai', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ url, mode: 'ai' }),
+          });
+          const data = await res.json();
+          if (!data.ok) {
+            toast(data.error || 'AI snapshot failed — try again.');
+            setResult(null);
+          } else {
+            setCredits(data.creditsRemaining);
+            setResult({ type: 'ai-success', host, html: data.html, sizeKB: data.sizeKB });
+          }
         } catch (err) {
-          console.error('Credit deduct failed:', err);
-          toast('Error — credit not deducted. Try again.');
+          console.error('AI snapshot failed:', err);
+          setResult(null);
+          toast('AI snapshot failed — try again.');
+        } finally {
+          setLoading(false);
         }
-      } else {
-        setResult({ type: 'hn', host });
+
+      } else if (mode === 'upload') {
+        toast('Use the upload zone to drop screenshots first.');
       }
     });
   }, [mode, credits, freeUsedToday, user, requireAuth, toast]);
+
+  const handleUploadSnapshot = useCallback(async (images) => {
+    if (!user) { setAuthOpen(true); return; }
+    if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
+    if (!images || images.length === 0) { toast('Upload at least a desktop screenshot.'); return; }
+
+    setLoading(true);
+    setResult({ type: 'ai-loading', host: 'screenshot' });
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch('/.netlify/functions/snapshot-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ mode: 'upload', images }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        toast(data.error || 'AI snapshot failed — try again.');
+        setResult(null);
+      } else {
+        setCredits(data.creditsRemaining);
+        setResult({ type: 'ai-success', host: 'screenshot rebuild', html: data.html, sizeKB: data.sizeKB });
+      }
+    } catch (err) {
+      console.error('Upload snapshot failed:', err);
+      setResult(null);
+      toast('AI snapshot failed — try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, credits, toast]);
 
   const handleDismissStamp = useCallback(() => {
     setResult(r => r ? { ...r, type: 'linear-dismissed' } : r);
@@ -169,6 +226,7 @@ export default function App() {
         mode={mode}
         onModeChange={setMode}
         onSnapshot={handleSnapshot}
+        onUploadSnapshot={handleUploadSnapshot}
         onRequireAuth={requireAuth}
       />
       <ResultsPanel

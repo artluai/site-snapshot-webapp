@@ -11,8 +11,10 @@ export default function ResultsPanel({ result, mode, loading, onDismissStamp, on
 
   return (
     <section style={S.section} ref={ref}>
-      {result.type === 'loading' && <LoadingResult host={result.host} />}
+      {result.type === 'loading' && <LoadingResult host={result.host} variant="green" />}
+      {result.type === 'ai-loading' && <AILoadingResult host={result.host} />}
       {result.type === 'free-success' && <FreeResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} onUpgrade={onUpgradeMode} />}
+      {result.type === 'ai-success' && <AIResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} />}
       {result.type === 'hn' && <HNResult host={result.host} toast={toast} onUpgrade={onUpgradeMode} />}
       {(result.type === 'linear-blocked' || result.type === 'linear-dismissed') && (
         <LinearResult blocked={result.type === 'linear-blocked'} host={result.host} onDismiss={onDismissStamp} toast={toast} />
@@ -46,7 +48,7 @@ function StatusCard({ steps, variant }) {
   );
 }
 
-/* ── Loading state ── */
+/* ── Loading states ── */
 function LoadingResult({ host }) {
   return (
     <div style={{ ...S.status, background: '#f0fdf4', borderColor: '#bbf7d0' }}>
@@ -62,10 +64,97 @@ function LoadingResult({ host }) {
   );
 }
 
+function AILoadingResult({ host }) {
+  const [step, setStep] = useState(0);
+  const steps = [
+    `Fetching ${host}...`,
+    'Analyzing design system — colors, fonts, layout...',
+    'Claude is rebuilding the interface...',
+    'Building interactions and responsive views...',
+  ];
+
+  useEffect(() => {
+    const timers = [];
+    timers.push(setTimeout(() => setStep(1), 2000));
+    timers.push(setTimeout(() => setStep(2), 5000));
+    timers.push(setTimeout(() => setStep(3), 12000));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div style={{ ...S.status, background: '#f5f0ff', borderColor: '#e2d8f5' }}>
+      {steps.map((s, i) => (
+        <div key={i} style={{ ...S.statusItem, opacity: i <= step ? 1 : 0, transform: i <= step ? 'translateY(0)' : 'translateY(8px)', transition: 'all .4s' }}>
+          <span style={{ ...S.dot, background: i < step ? '#22c55e' : '#7c5cfc', animation: i === step ? 'pulse 1.5s ease infinite' : 'none' }} />
+          {s}
+        </div>
+      ))}
+      {step >= 2 && (
+        <div style={{ paddingLeft: 18, fontSize: 12, color: '#999', marginTop: 4 }}>
+          identifying components · building structure · inlining styles · adding responsive toggle
+        </div>
+      )}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+    </div>
+  );
+}
+
+/* ── AI success — real HTML preview ── */
+function AIResult({ host, html, sizeKB, toast }) {
+  const [view, setView] = useState('desktop');
+
+  const handleDownload = () => {
+    const filename = `ai-snapshot-${host.replace(/[^a-z0-9]/gi, '-')}.html`;
+    downloadHTML(html, filename);
+    toast('Downloaded ' + filename);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(html);
+      toast('HTML copied to clipboard!');
+    } catch {
+      toast('Copy failed — try download instead.');
+    }
+  };
+
+  return (
+    <>
+      <StatusCard variant="purple" steps={[
+        `Fetched ${host}`,
+        'Extracted design system — colors, fonts, layout',
+        'AI rebuilt the interface with working interactions',
+        `AI snapshot complete — ${sizeKB}KB with responsive toggle ✓`,
+      ]} />
+      <div style={S.preview}>
+        <div style={S.previewBar}>
+          <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
+          <span style={S.previewTitle}>AI snapshot — {host}</span>
+          <div style={S.toggle}>
+            <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
+            <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
+          </div>
+        </div>
+        <div style={{ ...S.frame, height: 420, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
+          <iframe
+            srcDoc={html}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            sandbox="allow-same-origin allow-scripts"
+            title={`AI Snapshot of ${host}`}
+          />
+        </div>
+      </div>
+      <div style={S.actions}>
+        <button style={S.btnPrimary} onClick={handleDownload}>↓ DOWNLOAD HTML</button>
+        <button style={S.btnGhost} onClick={handleCopy}>COPY TO CLIPBOARD</button>
+      </div>
+    </>
+  );
+}
+
 /* ── Free success — real HTML preview ── */
 function FreeResult({ host, html, sizeKB, toast, onUpgrade }) {
   const [view, setView] = useState('desktop');
-  const scriptCount = (html.match(/stripped/gi) || []).length; // approximate
 
   const handleDownload = () => {
     const filename = `snapshot-${host.replace(/[^a-z0-9]/gi, '-')}.html`;
@@ -295,7 +384,6 @@ const S = {
   enhTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 4, letterSpacing: '-.5px' },
   enhDesc: { fontSize: 13, color: '#666', lineHeight: 1.5 },
   enhBtn: { background: '#7c5cfc', color: '#fff', border: 'none', borderRadius: 50, padding: '14px 28px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '-.3px', flexShrink: 0 },
-  // HN
   hn: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', fontSize: 11, background: '#f6f6ef', color: '#333', overflow: 'hidden' },
   hnBar: { background: '#ff6600', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6 },
   hnY: { color: '#fff', fontSize: 10, fontWeight: 700 },
@@ -307,7 +395,6 @@ const S = {
   hnTitle: { color: '#000', fontWeight: 500, fontSize: 10 },
   hnMeta: { color: '#999', fontSize: 8, marginTop: 1 },
   hnFoot: { padding: '4px 8px', fontSize: 7, color: '#999', borderTop: '1px solid #e8e8df' },
-  // Linear
   linWrap: { width: '100%', height: '100%', position: 'relative' },
   lin: { width: '100%', height: '100%', display: 'flex', fontSize: 11, background: '#19181f', color: '#e0e0e0', overflow: 'hidden' },
   linSide: { width: 170, background: '#131219', padding: 12, borderRight: '1px solid #2a2a35', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 },
@@ -322,7 +409,6 @@ const S = {
   linId: { color: '#555', fontSize: 9, minWidth: 48 },
   linT: { color: '#d0d0d0', flex: 1 },
   linTag: { fontSize: 9, padding: '2px 6px', borderRadius: 4, background: '#2a2a35', color: '#888' },
-  // blocked overlay
   blockedOverlay: { position: 'absolute', inset: 0, background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(3px)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 },
   stamp: { background: '#fff', border: '2px solid #fde68a', borderRadius: 20, padding: '28px 36px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,.08)', maxWidth: 380, transform: 'rotate(-2deg)' },
   stampTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-.5px', marginBottom: 6, color: '#92400e' },

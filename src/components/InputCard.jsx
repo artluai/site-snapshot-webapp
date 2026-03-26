@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
-export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth }) {
+export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnapshot, onRequireAuth }) {
   const [url, setUrl] = useState('');
-  const [dUp, setDUp] = useState(false);
-  const [mUp, setMUp] = useState(false);
+  const [desktopImg, setDesktopImg] = useState(null); // { data, mediaType, name, dims }
+  const [mobileImg, setMobileImg] = useState(null);
+  const dRef = useRef(null);
+  const mRef = useRef(null);
 
   const handleSubmit = () => onSnapshot(url);
   const handleKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
@@ -15,6 +17,48 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
   const tryLinear = () => {
     setUrl('https://linear.app');
     onRequireAuth(() => onSnapshot('https://linear.app', 'spa'));
+  };
+
+  const readFile = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) { reject(new Error('Not an image')); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        const img = new Image();
+        img.onload = () => {
+          resolve({
+            data: base64,
+            mediaType: file.type,
+            name: file.name,
+            dims: `${img.width}×${img.height}`,
+          });
+        };
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileDrop = async (e, setter) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = e.dataTransfer?.files?.[0] || e.target?.files?.[0];
+    if (!file) return;
+    try {
+      const img = await readFile(file);
+      setter(img);
+    } catch (err) {
+      console.error('File read error:', err);
+    }
+  };
+
+  const handleUploadSubmit = () => {
+    if (!desktopImg) return;
+    const images = [{ data: desktopImg.data, mediaType: desktopImg.mediaType }];
+    if (mobileImg) images.push({ data: mobileImg.data, mediaType: mobileImg.mediaType });
+    onUploadSnapshot(images);
   };
 
   return (
@@ -85,24 +129,43 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
           </div>
         )}
 
-        {/* Upload zones */}
+        {/* Upload zones — real file handling */}
         {mode === 'upload' && (
           <div style={{ marginTop: 16 }}>
             <div style={S.uploadGrid}>
-              <div style={{ ...S.uploadZone, ...(dUp ? S.uploadDone : {}) }} onClick={() => { onRequireAuth(() => setDUp(true)); }}>
-                {dUp && <div style={S.uploadCheck}>✓</div>}
+              <div
+                style={{ ...S.uploadZone, ...(desktopImg ? S.uploadDone : {}) }}
+                onClick={() => { onRequireAuth(() => dRef.current?.click()); }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { onRequireAuth(() => handleFileDrop(e, setDesktopImg)); }}
+              >
+                <input ref={dRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileDrop(e, setDesktopImg)} />
+                {desktopImg && <div style={S.uploadCheck}>✓</div>}
                 <div style={{ fontSize: 36, marginBottom: 8 }}>🖥️</div>
                 <div style={S.uploadTitle}>Desktop view</div>
-                <div style={{ fontSize: 12, color: dUp ? '#166534' : '#999' }}>{dUp ? 'desktop.png — 1440×900' : 'Drop or paste a screenshot'}</div>
+                <div style={{ fontSize: 12, color: desktopImg ? '#166534' : '#999' }}>
+                  {desktopImg ? `${desktopImg.name} — ${desktopImg.dims}` : 'Drop or click to upload a screenshot'}
+                </div>
               </div>
-              <div style={{ ...S.uploadZone, ...(mUp ? S.uploadDone : {}) }} onClick={() => { onRequireAuth(() => setMUp(true)); }}>
-                {mUp && <div style={S.uploadCheck}>✓</div>}
+              <div
+                style={{ ...S.uploadZone, ...(mobileImg ? S.uploadDone : {}) }}
+                onClick={() => { onRequireAuth(() => mRef.current?.click()); }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { onRequireAuth(() => handleFileDrop(e, setMobileImg)); }}
+              >
+                <input ref={mRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileDrop(e, setMobileImg)} />
+                {mobileImg && <div style={S.uploadCheck}>✓</div>}
                 <div style={{ fontSize: 36, marginBottom: 8 }}>📱</div>
                 <div style={S.uploadTitle}>Mobile view</div>
-                <div style={{ fontSize: 12, color: mUp ? '#166534' : '#999' }}>{mUp ? 'mobile.png — 390×844' : 'Optional — enables responsive toggle'}</div>
+                <div style={{ fontSize: 12, color: mobileImg ? '#166534' : '#999' }}>
+                  {mobileImg ? `${mobileImg.name} — ${mobileImg.dims}` : 'Optional — enables responsive toggle'}
+                </div>
               </div>
             </div>
-            <button style={{ ...S.snap, width: '100%', opacity: dUp ? 1 : .35, pointerEvents: dUp ? 'auto' : 'none' }} onClick={handleSubmit}>
+            <button
+              style={{ ...S.snap, width: '100%', opacity: desktopImg ? 1 : .35, pointerEvents: desktopImg ? 'auto' : 'none' }}
+              onClick={handleUploadSubmit}
+            >
               REBUILD FROM SCREENSHOTS →
             </button>
           </div>
@@ -130,7 +193,6 @@ const S = {
   chipActive: { background: '#1a1a1a', color: '#fff', borderColor: '#1a1a1a' },
   modeDesc: { fontSize: 13, color: '#999', marginTop: 12, lineHeight: 1.5 },
   creditNote: { marginTop: 8, fontSize: 12, color: '#7c5cfc', fontWeight: 600 },
-  // free group
   freeGroup: { border: '2px solid #eee', borderRadius: 16, marginTop: 16, overflow: 'hidden', transition: 'opacity .3s' },
   freeGroupDimmed: { opacity: .4, pointerEvents: 'none' },
   freeLabel: { background: '#f8f8f8', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 6 },
@@ -152,7 +214,6 @@ const S = {
   exUrl: { fontSize: 13, fontWeight: 600, color: '#333' },
   exDesc: { fontSize: 11, color: '#999', lineHeight: 1.3 },
   exArrow: { position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#ccc', fontSize: 14 },
-  // upload
   uploadGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 },
   uploadZone: { border: '2px dashed #ddd', borderRadius: 20, padding: '48px 32px', textAlign: 'center', cursor: 'pointer', position: 'relative' },
   uploadDone: { borderStyle: 'solid', borderColor: '#22c55e', background: '#f0fdf4' },
