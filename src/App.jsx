@@ -27,20 +27,15 @@ export default function App() {
   const toast = useCallback((msg) => {
     setToastMsg(msg);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(''), 2500);
+    toastTimer.current = setTimeout(() => setToastMsg(''), 3000);
   }, []);
 
-  // Listen for Firebase auth state changes
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const data = await loadOrCreateUser(firebaseUser.uid, firebaseUser.email);
-          setUser({
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || 'User',
-            email: firebaseUser.email,
-          });
+          setUser({ uid: firebaseUser.uid, name: firebaseUser.displayName || 'User', email: firebaseUser.email });
           setCredits(data.credits);
           setFreeUsedToday(data.freeUsedToday);
         } catch (err) {
@@ -48,10 +43,7 @@ export default function App() {
           toast('Error loading account — try again.');
         }
       } else {
-        setUser(null);
-        setCredits(0);
-        setFreeUsedToday(null);
-        setResult(null);
+        setUser(null); setCredits(0); setFreeUsedToday(null); setResult(null);
       }
     });
     return () => unsub();
@@ -75,21 +67,107 @@ export default function App() {
   }, [toast]);
 
   const handleSignOut = useCallback(async () => {
-    try {
-      await signOut(auth);
-      toast('Signed out.');
-    } catch (err) {
-      console.error('Sign-out error:', err);
-    }
+    try { await signOut(auth); toast('Signed out.'); }
+    catch (err) { console.error('Sign-out error:', err); }
   }, [toast]);
 
   const handleBuy = useCallback((amount) => {
     requireAuth(() => {
-      // TODO: replace with real Stripe checkout
+      // TODO: Stripe checkout
       setCredits(c => c + amount);
-      toast(`Added ${amount} credits! You now have ${credits + amount}.`);
+      toast(`Added ${amount} credits!`);
     });
   }, [requireAuth, credits, toast]);
+
+  // Parse streaming response from snapshot-ai
+  const parseStreamResponse = async (response) => {
+    // Check if it's a JSON error (non-streaming)
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return { ok: false, error: data.error || 'Unknown error' };
+    }
+
+    // Read streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let creditsRemaining = null;
+    let sizeKB = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      fullText += decoder.decode(value, { stream: true });
+    }
+
+    // Parse: first line is JSON metadata, last bit after final \n is JSON done marker
+    const lines = fullText.split('\n');
+    let htmlParts = [];
+
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line);
+        if (parsed.event === 'start') {
+          creditsRemaining = parsed.creditsRemaining;
+        } else if (parsed.event === 'done') {
+          sizeKB = parsed.sizeKB || 0;
+        } else if (parsed.event === 'error') {
+          return { ok: false, error: parsed.error || 'Stream error' };
+        } else {
+          htmlParts.push(line);
+        }
+      } catch {
+        // Not JSON — it's HTML content
+        htmlParts.push(line);
+      }
+    }
+
+    let html = htmlParts.join('\n').trim();
+    // Strip markdown fences if present
+    html = html.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
+
+    if (!html.includes('<!DOCTYPE') && !html.includes('<html')) {
+      return { ok: false, error: 'AI did not return valid HTML — try again' };
+    }
+
+    return { ok: true, html, sizeKB, creditsRemaining };
+  };
+
+  const callAI = async (bodyPayload, host) => {
+    setLoading(true);
+    setResult({ type: 'ai-loading', host });
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch('/.netlify/functions/snapshot-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(bodyPayload),
+      });
+
+      if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
+        const errData = await response.json();
+        toast(errData.error || 'AI snapshot failed.');
+        setResult(null);
+        return;
+      }
+
+      const data = await parseStreamResponse(response);
+      if (!data.ok) {
+        toast(data.error || 'AI snapshot failed.');
+        setResult(null);
+      } else {
+        if (data.creditsRemaining !== null) setCredits(data.creditsRemaining);
+        setResult({ type: 'ai-success', host, html: data.html, sizeKB: data.sizeKB });
+      }
+    } catch (err) {
+      console.error('AI snapshot failed:', err);
+      setResult(null);
+      toast('AI snapshot failed — try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSnapshot = useCallback((url, exampleType) => {
     requireAuth(async () => {
@@ -103,26 +181,25 @@ export default function App() {
       const isSpa = SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa';
 
       if (mode === 'quick') {
-        // Free mode — SPA check
-        if (isSpa) {
-          setResult({ type: 'linear-blocked', host });
-          return;
-        }
+        if (isSpa) { setResult({ type: 'linear-blocked', host }); return; }
 
-        // Check 1-per-day limit
+        // Auto-fallback to AI if free is used up and user has credits
         if (!canUseFreeToday(freeUsedToday)) {
-          toast('Free limit reached — 1 per day. Try again tomorrow or get AI credits!');
+          if (credits >= 1) {
+            toast('Free limit reached — using 1 AI credit instead.');
+            await callAI({ url, mode: 'ai' }, host);
+            return;
+          }
+          toast('Free limit reached — 1 per day. Get AI credits for unlimited snapshots!');
           return;
         }
 
-        // Real fetch
         setLoading(true);
         setResult({ type: 'loading', host });
         try {
           const { html, sizeKB } = await fetchAndClean(url);
           await markFreeUsed(user.uid);
-          const today = new Date().toISOString().slice(0, 10);
-          setFreeUsedToday(today);
+          setFreeUsedToday(new Date().toISOString().slice(0, 10));
           setResult({ type: 'free-success', host, html, sizeKB });
         } catch (err) {
           console.error('Snapshot failed:', err);
@@ -133,36 +210,8 @@ export default function App() {
         }
 
       } else if (mode === 'ai') {
-        // AI mode — call the Netlify function (server-side credit check)
         if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
-
-        setLoading(true);
-        setResult({ type: 'ai-loading', host });
-        try {
-          const token = await auth.currentUser.getIdToken();
-          const res = await fetch('/.netlify/functions/snapshot-ai', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ url, mode: 'ai' }),
-          });
-          const data = await res.json();
-          if (!data.ok) {
-            toast(data.error || 'AI snapshot failed — try again.');
-            setResult(null);
-          } else {
-            setCredits(data.creditsRemaining);
-            setResult({ type: 'ai-success', host, html: data.html, sizeKB: data.sizeKB });
-          }
-        } catch (err) {
-          console.error('AI snapshot failed:', err);
-          setResult(null);
-          toast('AI snapshot failed — try again.');
-        } finally {
-          setLoading(false);
-        }
+        await callAI({ url, mode: 'ai' }, host);
 
       } else if (mode === 'upload') {
         toast('Use the upload zone to drop screenshots first.');
@@ -172,36 +221,9 @@ export default function App() {
 
   const handleUploadSnapshot = useCallback(async (images) => {
     if (!user) { setAuthOpen(true); return; }
-    if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
-    if (!images || images.length === 0) { toast('Upload at least a desktop screenshot.'); return; }
-
-    setLoading(true);
-    setResult({ type: 'ai-loading', host: 'screenshot' });
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const res = await fetch('/.netlify/functions/snapshot-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ mode: 'upload', images }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        toast(data.error || 'AI snapshot failed — try again.');
-        setResult(null);
-      } else {
-        setCredits(data.creditsRemaining);
-        setResult({ type: 'ai-success', host: 'screenshot rebuild', html: data.html, sizeKB: data.sizeKB });
-      }
-    } catch (err) {
-      console.error('Upload snapshot failed:', err);
-      setResult(null);
-      toast('AI snapshot failed — try again.');
-    } finally {
-      setLoading(false);
-    }
+    if (credits < 1) { toast('No credits!'); return; }
+    if (!images?.length) { toast('Upload at least a desktop screenshot.'); return; }
+    await callAI({ mode: 'upload', images }, 'screenshot rebuild');
   }, [user, credits, toast]);
 
   const handleDismissStamp = useCallback(() => {
@@ -210,33 +232,11 @@ export default function App() {
 
   return (
     <>
-      <Nav
-        user={user}
-        credits={credits}
-        onSignIn={() => setAuthOpen(true)}
-        onSignOut={handleSignOut}
-      />
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        onSignIn={handleSignIn}
-      />
+      <Nav user={user} credits={credits} onSignIn={() => setAuthOpen(true)} onSignOut={handleSignOut} />
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={handleSignIn} />
       <Hero />
-      <InputCard
-        mode={mode}
-        onModeChange={setMode}
-        onSnapshot={handleSnapshot}
-        onUploadSnapshot={handleUploadSnapshot}
-        onRequireAuth={requireAuth}
-      />
-      <ResultsPanel
-        result={result}
-        mode={mode}
-        loading={loading}
-        onDismissStamp={handleDismissStamp}
-        onUpgradeMode={() => setMode('ai')}
-        toast={toast}
-      />
+      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onUploadSnapshot={handleUploadSnapshot} onRequireAuth={requireAuth} />
+      <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
       <Pricing onBuy={handleBuy} />
       <Features />
       <Footer />
