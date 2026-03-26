@@ -1,13 +1,10 @@
 export default function Toast({ message }) {
+  if (!message) return null;
   return (
-    <div style={{
-      position: 'fixed', bottom: 24, left: '50%',
-      transform: message ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(80px)',
-      background: '#1a1a1a', color: '#fff', padding: '12px 24px', borderRadius: 50,
-      fontSize: 13, fontWeight: 600, zIndex: 9999, transition: 'transform .3s',
-      pointerEvents: 'none', whiteSpace: 'nowrap',
-    }}>
-      {message}
-    </div>
+    <div style={S.toast}>{message}</div>
   );
 }
+
+const S = {
+  toast: { position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', background: '#1a1a1a', color: '#fff', padding: '12px 28px', borderRadius: 50, fontSize: 14, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,.15)', whiteSpace: 'nowrap' },
+};

@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <div style={S.footer}>
+    <div style={S.footer} className="footer-bar">
       <span>built with the <a href="#" style={S.link}>site-snapshot</a> Claude skill</span>
       <span>by <a href="https://artlu.ai" style={S.link}>artlu.ai</a> — 100 projects in 100 days</span>
     </div>

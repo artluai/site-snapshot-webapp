@@ -1,9 +1,9 @@
 export default function Features() {
   return (
-    <section style={S.section}>
+    <section style={S.section} className="feat-section">
       <div style={S.inner}>
-        <h2 style={S.h2}>SAVE IT. SHARE IT.<br /><span style={S.purple}>KEEP IT FOREVER.</span></h2>
-        <div style={S.grid}>
+        <h2 style={S.h2} className="feat-title">SAVE IT. SHARE IT.<br /><span style={S.purple}>KEEP IT FOREVER.</span></h2>
+        <div style={S.grid} className="feat-grid">
           {FEATS.map((f, i) => (
             <div key={i} style={S.card}>
               <div style={S.emoji}>{f.emoji}</div>

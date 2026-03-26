@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function Hero() {
-  const [phase, setPhase] = useState('idle'); // idle, scanning, revealed
+  const [phase, setPhase] = useState('idle');
   const [urlText, setUrlText] = useState('snapshot — example.com');
   const timer = useRef(null);
 
@@ -24,18 +24,18 @@ export default function Hero() {
   }, []);
 
   return (
-    <section style={S.hero}>
+    <section style={S.hero} className="hero-grid">
       <div style={S.text}>
-        <h1 style={S.h1}>
+        <h1 style={S.h1} className="hero-title">
           <span style={S.mint}>SAVE</span> A COPY OF{' '}
           <span style={S.yellow}>ANY WEBSITE</span> IN SECONDS
         </h1>
-        <p style={S.sub}>Paste a link. Get a perfect copy you can download, share, or keep forever. No install. Just paste and go.</p>
+        <p style={S.sub} className="hero-desc">Paste a link. Get a perfect copy you can download, share, or keep forever. No install. Just paste and go.</p>
         <button style={S.cta} onClick={() => document.querySelector('#input-section')?.scrollIntoView({ behavior: 'smooth' })}>
           TRY IT FREE →
         </button>
       </div>
-      <div style={S.visual}>
+      <div style={S.visual} className="hero-visual">
         <div style={S.browser}>
           <div style={S.bar}>
             <span style={{ ...S.dot, background: '#ff6b6b' }} />
@@ -44,20 +44,17 @@ export default function Hero() {
             <div style={S.urlBar}>{urlText}</div>
           </div>
           <div style={S.body}>
-            {/* scan line */}
             <div style={{
               ...S.scanLine,
               opacity: phase === 'scanning' ? 1 : 0,
               animation: phase === 'scanning' ? 'scanDown 2.2s ease-in-out forwards' : 'none',
             }} />
-            {/* placeholder */}
             <div style={{ ...S.before, opacity: phase === 'idle' ? 1 : 0 }}>
               <div style={{ textAlign: 'center', fontSize: 11, color: '#aaa' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
                 <div>your copy previews here</div>
               </div>
             </div>
-            {/* HN content */}
             <div style={{
               ...S.after,
               clipPath: phase === 'revealed' ? 'inset(0)' : phase === 'scanning' ? undefined : 'inset(0 0 100% 0)',
@@ -95,24 +92,23 @@ const HN_ITEMS = [
   { title: 'The Unreasonable Effectiveness of Plain Text', meta: '187 pts · 4h ago · 112 comments' },
   { title: 'Ask HN: What are you working on?', meta: '94 pts · 2h ago · 203 comments' },
   { title: 'A visual guide to CSS Grid in 2026', meta: '156 pts · 5h ago · 67 comments' },
-  { title: 'Rust vs Go for backend services', meta: '211 pts · 7h ago · 289 comments' },
 ];
 
 const S = {
   hero: { maxWidth: 1200, margin: '0 auto', padding: '40px 40px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'center', minHeight: 480 },
-  text: {},
+  text: { paddingBottom: 40 },
   h1: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 64, fontWeight: 700, lineHeight: 1.05, letterSpacing: -3, marginBottom: 16 },
-  mint: { background: '#c4f5e1', padding: '0 8px', borderRadius: 6, display: 'inline' },
-  yellow: { background: '#fef3a0', padding: '0 8px', borderRadius: 6, display: 'inline' },
+  mint: { color: '#1a1a1a', background: '#c4f5e1', padding: '0 8px', borderRadius: 6, display: 'inline' },
+  yellow: { color: '#1a1a1a', background: '#fef3a0', padding: '0 8px', borderRadius: 6, display: 'inline' },
   sub: { fontSize: 18, color: '#666', lineHeight: 1.6, marginBottom: 28, maxWidth: 440 },
-  cta: { background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 14, padding: '18px 36px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 700, cursor: 'pointer', letterSpacing: '-.3px' },
-  visual: { background: '#c4f5e1', borderRadius: 24, padding: 32, position: 'relative', minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  browser: { background: '#fff', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,.08)', width: '100%', maxWidth: 420, overflow: 'hidden', position: 'relative' },
-  bar: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderBottom: '1px solid #eee' },
-  dot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block' },
-  urlBar: { flex: 1, background: '#f5f5f5', borderRadius: 6, padding: '6px 12px', fontSize: 11, color: '#999', marginLeft: 8 },
-  body: { position: 'relative', minHeight: 220, background: '#fafafa', overflow: 'hidden' },
-  scanLine: { position: 'absolute', top: 0, left: 0, width: '100%', height: 4, background: 'linear-gradient(90deg,transparent 0%,#4ade80 20%,#4ade80 80%,transparent 100%)', zIndex: 20, boxShadow: '0 0 24px rgba(74,222,128,.8), 0 0 80px rgba(74,222,128,.4)', transition: 'opacity .3s' },
+  cta: { background: '#1a1a1a', color: '#fff', border: 'none', fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 700, padding: '16px 36px', borderRadius: 50, cursor: 'pointer', letterSpacing: '-.3px' },
+  visual: { position: 'relative', background: 'linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 50%,#f0fdf4 100%)', borderRadius: 24, padding: 32, minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  browser: { width: '100%', maxWidth: 320, background: '#fff', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,.08)', overflow: 'hidden' },
+  bar: { display: 'flex', alignItems: 'center', gap: 5, padding: '8px 10px', background: '#f5f5f5', borderBottom: '1px solid #eee' },
+  dot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
+  urlBar: { flex: 1, fontSize: 9, color: '#999', background: '#fff', borderRadius: 4, padding: '3px 8px', fontFamily: 'inherit', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' },
+  body: { height: 220, position: 'relative', overflow: 'hidden' },
+  scanLine: { position: 'absolute', left: 0, right: 0, top: 0, height: 4, background: 'linear-gradient(90deg, transparent, #4ade80, transparent)', zIndex: 10, borderRadius: 2, boxShadow: '0 0 16px rgba(74,222,128,.8), 0 0 80px rgba(74,222,128,.4)', transition: 'opacity .3s' },
   before: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa', zIndex: 6, transition: 'opacity .6s', pointerEvents: 'none' },
   after: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', fontSize: 10, background: '#f6f6ef', color: '#333', zIndex: 5 },
   hnBar: { background: '#ff6600', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 },

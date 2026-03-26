@@ -1,17 +1,17 @@
-export default function Pricing({ onBuy }) {
+export default function Pricing() {
   return (
-    <section style={S.section} id="pricing">
+    <section style={S.section} className="pricing-section" id="pricing">
       <div style={S.header}>
         <h2 style={S.h2}>SIMPLE PRICING</h2>
-        <p style={S.sub}>Free mode is free forever. AI credits never expire.</p>
+        <p style={S.sub}>Free mode is free forever. AI credits coming soon.</p>
       </div>
-      <div style={S.grid}>
+      <div style={S.grid} className="pricing-grid">
         {TIERS.map((t, i) => (
           <div key={i} style={{ ...S.card, ...(t.featured ? S.featured : {}) }}>
             {t.badge && <div style={S.badge}>{t.badge}</div>}
             <div style={{ fontSize: 28, marginBottom: 8 }}>{t.emoji}</div>
             <div style={S.name}>{t.name}</div>
-            <div style={S.price}>{t.price}<span style={S.cents}>{t.cents || ''}</span></div>
+            <div style={S.price}>{t.price}{t.cents && <span style={S.cents}>{t.cents}</span>}</div>
             <div style={S.perUnit}>{t.perUnit}</div>
             <div style={S.features}>
               {t.features.map((f, j) => (
@@ -19,8 +19,8 @@ export default function Pricing({ onBuy }) {
               ))}
             </div>
             {t.btnText && (
-              <button style={{ ...S.btn, ...(t.featured ? S.btnPurple : S.btnDark) }} onClick={() => onBuy(t.credits)}>
-                {t.btnText}
+              <button style={{ ...S.btn, ...(t.featured ? S.btnPurple : S.btnDark), opacity: .4, cursor: 'default' }}>
+                COMING SOON
               </button>
             )}
           </div>
@@ -70,7 +70,7 @@ const S = {
   cents: { fontSize: 18, color: '#888' },
   perUnit: { fontSize: 13, color: '#999', marginBottom: 20 },
   features: { fontSize: 12, color: '#666', lineHeight: 1.8, textAlign: 'left' },
-  btn: { marginTop: 20, width: '100%', border: 'none', borderRadius: 50, padding: 12, fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  btn: { marginTop: 20, width: '100%', border: 'none', borderRadius: 50, padding: 12, fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700 },
   btnPurple: { background: '#7c5cfc', color: '#fff' },
   btnDark: { background: '#1a1a1a', color: '#fff' },
 };

@@ -10,16 +10,14 @@ export default function ResultsPanel({ result, mode, loading, onDismissStamp, on
   if (!result) return <div ref={ref} />;
 
   return (
-    <section style={S.section} ref={ref}>
-      {result.type === 'loading' && <LoadingResult host={result.host} variant="green" />}
-      {result.type === 'ai-loading' && <AILoadingResult host={result.host} />}
-      {result.type === 'free-success' && <FreeResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} onUpgrade={onUpgradeMode} />}
-      {result.type === 'ai-success' && <AIResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} />}
-      {result.type === 'hn' && <HNResult host={result.host} toast={toast} onUpgrade={onUpgradeMode} />}
+    <section style={S.section} className="result-section" ref={ref}>
+      {result.type === 'loading' && <LoadingResult host={result.host} label="Fetching" />}
+      {result.type === 'ai-loading' && <LoadingResult host={result.host} label="Capturing" ai />}
+      {result.type === 'free-success' && <SuccessResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} onUpgrade={onUpgradeMode} variant="free" />}
+      {result.type === 'ai-success' && <SuccessResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} variant="ai" />}
       {(result.type === 'linear-blocked' || result.type === 'linear-dismissed') && (
         <LinearResult blocked={result.type === 'linear-blocked'} host={result.host} onDismiss={onDismissStamp} toast={toast} />
       )}
-      {result.type === 'linear-ai' && <LinearAIResult host={result.host} toast={toast} />}
     </section>
   );
 }
@@ -33,14 +31,14 @@ function StatusCard({ steps, variant }) {
     });
   }, [steps]);
 
-  const bg = variant === 'green' ? '#f0fdf4' : variant === 'purple' ? '#f5f0ff' : '#fffbeb';
-  const border = variant === 'green' ? '#bbf7d0' : variant === 'purple' ? '#e2d8f5' : '#fde68a';
+  const bg = variant === 'green' ? '#f0fdf4' : variant === 'purple' ? '#f5f3ff' : '#fffbeb';
+  const border = variant === 'green' ? '#bbf7d0' : variant === 'purple' ? '#ddd6fe' : '#fde68a';
 
   return (
     <div style={{ ...S.status, background: bg, borderColor: border }}>
       {steps.map((s, i) => (
         <div key={i} style={{ ...S.statusItem, opacity: visible.includes(i) ? 1 : 0, transform: visible.includes(i) ? 'translateY(0)' : 'translateY(8px)', transition: 'all .3s' }}>
-          <span style={{ ...S.dot, background: visible.includes(steps.length - 1) || i < steps.length - 1 ? '#22c55e' : '#7c5cfc' }} />
+          <span style={{ ...S.dot, background: variant === 'purple' ? '#7c5cfc' : '#22c55e' }} />
           {s}
         </div>
       ))}
@@ -48,112 +46,22 @@ function StatusCard({ steps, variant }) {
   );
 }
 
-/* ── Loading states ── */
-function LoadingResult({ host }) {
+function LoadingResult({ host, label, ai }) {
   return (
-    <div style={{ ...S.status, background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+    <div style={{ ...S.status, background: ai ? '#f5f3ff' : '#f0fdf4', borderColor: ai ? '#ddd6fe' : '#bbf7d0' }}>
       <div style={S.statusItem}>
-        <span style={{ ...S.dot, background: '#22c55e', animation: 'pulse 1.5s ease infinite' }} />
-        Fetching {host}...
+        <span style={{ ...S.dot, background: ai ? '#7c5cfc' : '#22c55e', animation: 'pulse 1.5s ease infinite' }} />
+        {label} {host}...
       </div>
       <div style={{ paddingLeft: 18, fontSize: 12, color: '#999', marginTop: 4 }}>
-        connecting · downloading HTML · this takes a few seconds
+        {ai ? 'loading page in browser · rendering JavaScript · inlining styles · this takes 10-20 seconds' : 'connecting · downloading HTML · this takes a few seconds'}
       </div>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>
   );
 }
 
-function AILoadingResult({ host }) {
-  const [step, setStep] = useState(0);
-  const steps = [
-    `Fetching ${host}...`,
-    'Analyzing design system — colors, fonts, layout...',
-    'Claude is rebuilding the interface...',
-    'Building interactions and responsive views...',
-  ];
-
-  useEffect(() => {
-    const timers = [];
-    timers.push(setTimeout(() => setStep(1), 2000));
-    timers.push(setTimeout(() => setStep(2), 5000));
-    timers.push(setTimeout(() => setStep(3), 12000));
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  return (
-    <div style={{ ...S.status, background: '#f5f0ff', borderColor: '#e2d8f5' }}>
-      {steps.map((s, i) => (
-        <div key={i} style={{ ...S.statusItem, opacity: i <= step ? 1 : 0, transform: i <= step ? 'translateY(0)' : 'translateY(8px)', transition: 'all .4s' }}>
-          <span style={{ ...S.dot, background: i < step ? '#22c55e' : '#7c5cfc', animation: i === step ? 'pulse 1.5s ease infinite' : 'none' }} />
-          {s}
-        </div>
-      ))}
-      {step >= 2 && (
-        <div style={{ paddingLeft: 18, fontSize: 12, color: '#999', marginTop: 4 }}>
-          identifying components · building structure · inlining styles · adding responsive toggle
-        </div>
-      )}
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-    </div>
-  );
-}
-
-/* ── AI success — real HTML preview ── */
-function AIResult({ host, html, sizeKB, toast }) {
-  const [view, setView] = useState('desktop');
-
-  const handleDownload = () => {
-    const filename = `ai-snapshot-${host.replace(/[^a-z0-9]/gi, '-')}.html`;
-    downloadHTML(html, filename);
-    toast('Downloaded ' + filename);
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(html);
-      toast('HTML copied to clipboard!');
-    } catch {
-      toast('Copy failed — try download instead.');
-    }
-  };
-
-  return (
-    <>
-      <StatusCard variant="purple" steps={[
-        `Fetched ${host}`,
-        'Extracted design system — colors, fonts, layout',
-        'AI rebuilt the interface with working interactions',
-        `AI snapshot complete — ${sizeKB}KB with responsive toggle ✓`,
-      ]} />
-      <div style={S.preview}>
-        <div style={S.previewBar}>
-          <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
-          <span style={S.previewTitle}>AI snapshot — {host}</span>
-          <div style={S.toggle}>
-            <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
-            <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
-          </div>
-        </div>
-        <div style={{ ...S.frame, height: 420, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
-          <iframe
-            srcDoc={html}
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            sandbox="allow-same-origin allow-scripts"
-            title={`AI Snapshot of ${host}`}
-          />
-        </div>
-      </div>
-      <div style={S.actions}>
-        <button style={S.btnPrimary} onClick={handleDownload}>↓ DOWNLOAD HTML</button>
-        <button style={S.btnGhost} onClick={handleCopy}>COPY TO CLIPBOARD</button>
-      </div>
-    </>
-  );
-}
-
-/* ── Free success — real HTML preview ── */
-function FreeResult({ host, html, sizeKB, toast, onUpgrade }) {
+function SuccessResult({ host, html, sizeKB, toast, onUpgrade, variant }) {
   const [view, setView] = useState('desktop');
 
   const handleDownload = () => {
@@ -171,23 +79,25 @@ function FreeResult({ host, html, sizeKB, toast, onUpgrade }) {
     }
   };
 
+  const isAI = variant === 'ai';
+
   return (
     <>
-      <StatusCard variant="green" steps={[
-        `Fetched ${host}`,
-        'Stripped scripts & tracking pixels',
-        `Snapshot ready — ${sizeKB}KB single file ✓`,
-      ]} />
+      <StatusCard variant={isAI ? 'purple' : 'green'} steps={
+        isAI
+          ? [`Loaded ${host} in browser`, 'Rendered JavaScript & lazy content', 'Inlined all stylesheets', `Pro snapshot ready — ${sizeKB}KB ✓`]
+          : [`Fetched ${host}`, 'Stripped scripts & tracking pixels', `Snapshot ready — ${sizeKB}KB single file ✓`]
+      } />
       <div style={S.preview}>
         <div style={S.previewBar}>
           <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
-          <span style={S.previewTitle}>snapshot — {host}</span>
+          <span style={S.previewTitle}>{isAI ? 'pro capture' : 'snapshot'} — {host}</span>
           <div style={S.toggle}>
             <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
             <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
           </div>
         </div>
-        <div style={{ ...S.frame, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
+        <div className="preview-frame" style={{ ...S.frame, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
           <iframe
             srcDoc={html}
             style={{ width: '100%', height: '100%', border: 'none' }}
@@ -200,121 +110,41 @@ function FreeResult({ host, html, sizeKB, toast, onUpgrade }) {
         <button style={S.btnPrimary} onClick={handleDownload}>↓ DOWNLOAD HTML</button>
         <button style={S.btnGhost} onClick={handleCopy}>COPY TO CLIPBOARD</button>
       </div>
-      <div style={S.enhance}>
-        <div>
-          <h3 style={S.enhTitle}>This is the basic version ⚡</h3>
-          <p style={S.enhDesc}>It captured the content. AI mode would also match exact fonts, add working links, and include a responsive mobile view.</p>
+      {!isAI && onUpgrade && (
+        <div style={S.enhance} className="enhance-card">
+          <div>
+            <h3 style={S.enhTitle}>This is the basic version ⚡</h3>
+            <p style={S.enhDesc}>AI mode uses a real browser to capture the page — including JavaScript apps, lazy content, and full styling.</p>
+          </div>
+          <button style={S.enhBtn} onClick={onUpgrade}>TRY AI MODE →</button>
         </div>
-        <button style={S.enhBtn} onClick={onUpgrade}>UPGRADE TO AI — 1 CREDIT →</button>
-      </div>
-    </>
-  );
-}
-
-/* ── HN mock result (kept for demo/examples) ── */
-function HNResult({ host, toast, onUpgrade }) {
-  return (
-    <>
-      <StatusCard variant="green" steps={[
-        `Fetched ${host} — 14KB HTML`,
-        'Stripped 2 scripts',
-        'Inlined 1 stylesheet — 4KB',
-        'Snapshot ready — 11KB single file ✓',
-      ]} />
-      <PreviewCard title={`snapshot — ${host}`}>
-        <HNMock />
-      </PreviewCard>
-      <div style={S.actions}>
-        <button style={S.btnPrimary} onClick={() => toast('Downloaded snapshot.html')}>↓ DOWNLOAD HTML</button>
-        <button style={S.btnGhost} onClick={() => toast('Copied!')}>COPY TO CLIPBOARD</button>
-        <button style={S.btnGhost}>VIEW SOURCE</button>
-      </div>
-      <div style={S.enhance}>
-        <div>
-          <h3 style={S.enhTitle}>This is the basic version ⚡</h3>
-          <p style={S.enhDesc}>It captured the content well. AI mode would also match exact fonts, add working links, and include a responsive mobile view.</p>
-        </div>
-        <button style={S.enhBtn} onClick={onUpgrade}>UPGRADE TO AI — 1 CREDIT →</button>
-      </div>
+      )}
     </>
   );
 }
 
 function LinearResult({ blocked, host, onDismiss, toast }) {
   return (
-    <>
-      <PreviewCard title={`snapshot — ${host}${blocked ? '' : ' (limited)'}`}>
+    <div style={S.preview}>
+      <div style={S.previewBar}>
+        <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
+        <span style={S.previewTitle}>snapshot — {host}{blocked ? '' : ' (limited)'}</span>
+      </div>
+      <div style={S.frame}>
         <div style={S.linWrap}>
           <LinearMock />
           {blocked && (
             <div style={S.blockedOverlay}>
               <div style={S.stamp}>
                 <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
-                <div style={S.stampTitle}>Free mode can't capture this accurately</div>
-                <div style={S.stampDesc}>{host} is a JavaScript app — the free snapshot only grabs an empty shell. AI mode reads the page like a real browser and rebuilds the full interface.</div>
-                <button style={S.stampBtn} onClick={onDismiss}>LET ME SEE ANYWAY →</button>
+                <div style={S.stampTitle}>Free mode can't capture this</div>
+                <div style={S.stampDesc}>{host} is a JavaScript app. Free mode only grabs an empty shell. Switch to AI mode for a full capture.</div>
+                <button style={S.stampBtn} onClick={onDismiss}>SEE ANYWAY →</button>
               </div>
             </div>
           )}
         </div>
-      </PreviewCard>
-    </>
-  );
-}
-
-function LinearAIResult({ host, toast }) {
-  return (
-    <>
-      <StatusCard variant="purple" steps={[
-        `Fetched ${host} — 890KB`,
-        'Extracted — 22 colors, Inter font, sidebar+main layout',
-        'Claude is rebuilding the interface...',
-        'AI snapshot complete — 64KB with responsive toggle ✓',
-      ]} />
-      <PreviewCard title={`AI snapshot — ${host}`}>
-        <LinearMock />
-      </PreviewCard>
-      <div style={S.actions}>
-        <button style={S.btnPrimary} onClick={() => toast('Downloaded ai-snapshot.html')}>↓ DOWNLOAD HTML</button>
-        <button style={S.btnGhost} onClick={() => toast('Copied!')}>COPY TO CLIPBOARD</button>
-        <button style={S.btnGhost}>VIEW SOURCE</button>
       </div>
-    </>
-  );
-}
-
-function PreviewCard({ title, children }) {
-  const [view, setView] = useState('desktop');
-  return (
-    <div style={S.preview}>
-      <div style={S.previewBar}>
-        <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
-        <span style={S.previewTitle}>{title}</span>
-        <div style={S.toggle}>
-          <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
-          <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
-        </div>
-      </div>
-      <div style={{ ...S.frame, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function HNMock() {
-  return (
-    <div style={S.hn}>
-      <div style={S.hnBar}><span style={S.hnY}>Y</span><span style={S.hnBold}>Hacker News</span><span style={S.hnLinks}>new | past | comments | ask | show | jobs</span></div>
-      <div style={S.hnItems}>
-        {HN.map((h, i) => (
-          <div key={i} style={S.hnItem}>
-            <span style={S.hnRank}>{i + 1}.</span>
-            <div><div style={S.hnTitle}>{h.title}</div><div style={S.hnMeta}>{h.meta}</div></div>
-          </div>
-        ))}
-      </div>
-      <div style={S.hnFoot}>Guidelines | FAQ | Lists | API | Security | Legal | Apply to YC</div>
     </div>
   );
 }
@@ -342,17 +172,6 @@ function LinearMock() {
     </div>
   );
 }
-
-const HN = [
-  { title: 'Show HN: I built a tool to freeze any website into one HTML file', meta: '142 points · 3 hours ago · 87 comments' },
-  { title: 'Why SQLite is the most deployed database in the world', meta: '298 points · 6 hours ago · 194 comments' },
-  { title: 'The Unreasonable Effectiveness of Plain Text', meta: '187 points · 4 hours ago · 112 comments' },
-  { title: 'Ask HN: What are you working on this weekend?', meta: '94 points · 2 hours ago · 203 comments' },
-  { title: 'A visual guide to CSS Grid in 2026', meta: '156 points · 5 hours ago · 67 comments' },
-  { title: 'Rust vs Go for backend services: a practical comparison', meta: '211 points · 7 hours ago · 289 comments' },
-  { title: 'How I built a SaaS in 30 days with no funding', meta: '134 points · 4 hours ago · 98 comments' },
-  { title: 'The architecture of a one-person startup', meta: '267 points · 8 hours ago · 178 comments' },
-];
 
 const ISSUES = [
   { id: 'LIN-482', title: 'Fix auth redirect loop on mobile Safari', tag: 'Bug', pri: 'urgent' },
@@ -384,17 +203,6 @@ const S = {
   enhTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 4, letterSpacing: '-.5px' },
   enhDesc: { fontSize: 13, color: '#666', lineHeight: 1.5 },
   enhBtn: { background: '#7c5cfc', color: '#fff', border: 'none', borderRadius: 50, padding: '14px 28px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '-.3px', flexShrink: 0 },
-  hn: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', fontSize: 11, background: '#f6f6ef', color: '#333', overflow: 'hidden' },
-  hnBar: { background: '#ff6600', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6 },
-  hnY: { color: '#fff', fontSize: 10, fontWeight: 700 },
-  hnBold: { color: '#fff', fontSize: 10, fontWeight: 700 },
-  hnLinks: { color: '#000', fontSize: 9, opacity: .7 },
-  hnItems: { padding: '4px 8px', flex: 1, overflow: 'hidden' },
-  hnItem: { padding: '3px 0', display: 'flex', gap: 6, borderBottom: '1px solid #e8e8df' },
-  hnRank: { color: '#999', minWidth: 18, textAlign: 'right', fontSize: 10 },
-  hnTitle: { color: '#000', fontWeight: 500, fontSize: 10 },
-  hnMeta: { color: '#999', fontSize: 8, marginTop: 1 },
-  hnFoot: { padding: '4px 8px', fontSize: 7, color: '#999', borderTop: '1px solid #e8e8df' },
   linWrap: { width: '100%', height: '100%', position: 'relative' },
   lin: { width: '100%', height: '100%', display: 'flex', fontSize: 11, background: '#19181f', color: '#e0e0e0', overflow: 'hidden' },
   linSide: { width: 170, background: '#131219', padding: 12, borderRight: '1px solid #2a2a35', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 },
@@ -413,5 +221,5 @@ const S = {
   stamp: { background: '#fff', border: '2px solid #fde68a', borderRadius: 20, padding: '28px 36px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,.08)', maxWidth: 380, transform: 'rotate(-2deg)' },
   stampTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: '-.5px', marginBottom: 6, color: '#92400e' },
   stampDesc: { fontSize: 12, color: '#999', lineHeight: 1.5, marginBottom: 16 },
-  stampBtn: { background: '#7c5cfc', color: '#fff', border: 'none', borderRadius: 50, padding: '12px 28px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-.3px' },
+  stampBtn: { background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 50, padding: '12px 28px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-.3px' },
 };

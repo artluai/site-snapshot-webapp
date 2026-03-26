@@ -13,6 +13,34 @@ import Features from './components/Features.jsx';
 import Footer from './components/Footer.jsx';
 import Toast from './components/Toast.jsx';
 
+const RESPONSIVE_CSS = `
+@media(max-width:768px){
+  .hero-grid{grid-template-columns:1fr!important;padding:24px 20px 0!important;min-height:auto!important}
+  .hero-title{font-size:40px!important;letter-spacing:-2px!important}
+  .hero-visual{min-height:280px!important;border-radius:16px!important;padding:20px!important}
+  .nav-bar{padding:16px 20px!important}
+  .nav-outline{display:none!important}
+  .input-section{padding:20px 20px 50px!important}
+  .input-card{padding:24px!important}
+  .input-row{flex-direction:column!important}
+  .snap-btn{width:100%!important}
+  .result-section{padding:0 20px 20px!important}
+  .feat-section{padding:40px 20px!important}
+  .feat-title{font-size:28px!important}
+  .feat-grid{grid-template-columns:1fr!important}
+  .upload-grid{grid-template-columns:1fr!important}
+  .pricing-grid{grid-template-columns:1fr!important}
+  .enhance-card{flex-direction:column!important;text-align:center!important}
+  .footer-bar{padding:24px 20px!important;flex-direction:column!important;gap:8px!important}
+  .pricing-section{padding:30px 20px!important}
+  .hero-desc{font-size:16px!important}
+  .mode-chips{flex-wrap:wrap!important}
+  .preview-frame{height:280px!important}
+  .compat-grid{grid-template-columns:1fr!important}
+  .example-grid{grid-template-columns:1fr!important}
+}
+`;
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
@@ -71,80 +99,8 @@ export default function App() {
     catch (err) { console.error('Sign-out error:', err); }
   }, [toast]);
 
-  const handleBuy = useCallback((amount) => {
-    requireAuth(() => {
-      // TODO: Stripe checkout
-      setCredits(c => c + amount);
-      toast(`Added ${amount} credits!`);
-    });
-  }, [requireAuth, credits, toast]);
-
-  // Parse streaming response from snapshot-ai
-  const parseStreamResponse = async (response) => {
-    // Check if it's a JSON error (non-streaming)
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const data = await response.json();
-      return { ok: false, error: data.error || 'Unknown error' };
-    }
-
-    // Read streaming response
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '';
-    let creditsRemaining = null;
-    let sizeKB = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      fullText += decoder.decode(value, { stream: true });
-    }
-
-    // Parse: first line is JSON metadata, last bit after final \n is JSON done marker
-    const lines = fullText.split('\n');
-    let htmlParts = [];
-
-    for (const line of lines) {
-      try {
-        const parsed = JSON.parse(line);
-        if (parsed.event === 'start') {
-          creditsRemaining = parsed.creditsRemaining;
-        } else if (parsed.event === 'done') {
-          sizeKB = parsed.sizeKB || 0;
-        } else if (parsed.event === 'error') {
-          return { ok: false, error: parsed.error || 'Stream error' };
-        } else {
-          htmlParts.push(line);
-        }
-      } catch {
-        // Not JSON — it's HTML content
-        htmlParts.push(line);
-      }
-    }
-
-    let html = htmlParts.join('\n').trim();
-    // Strip markdown fences if present
-    html = html.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim();
-
-    if (!html.includes('<!DOCTYPE') && !html.includes('<html')) {
-      return { ok: false, error: 'AI did not return valid HTML — try again' };
-    }
-
-    // Handle truncated output — close open tags so it still renders
-    if (!html.includes('</html>')) {
-      html += '\n</div></body></html>';
-    }
-    if (!html.includes('</body>') && html.includes('<body')) {
-      html = html.replace('</html>', '</body></html>');
-    }
-
-    if (!sizeKB) sizeKB = Math.round(new Blob([html]).size / 1024);
-
-    return { ok: true, html, sizeKB, creditsRemaining };
-  };
-
-  const callAI = async (bodyPayload, host) => {
+  // AI URL mode — Browserless headless Chrome capture
+  const callBrowserCapture = async (url, host) => {
     setLoading(true);
     setResult({ type: 'ai-loading', host });
     try {
@@ -152,28 +108,21 @@ export default function App() {
       const response = await fetch('/.netlify/functions/snapshot-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(bodyPayload),
+        body: JSON.stringify({ url, mode: 'ai' }),
       });
 
-      if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
-        const errData = await response.json();
-        toast(errData.error || 'AI snapshot failed.');
-        setResult(null);
-        return;
-      }
-
-      const data = await parseStreamResponse(response);
+      const data = await response.json();
       if (!data.ok) {
-        toast(data.error || 'AI snapshot failed.');
+        toast(data.error || 'Capture failed.');
         setResult(null);
       } else {
-        if (data.creditsRemaining !== null) setCredits(data.creditsRemaining);
+        if (data.creditsRemaining != null) setCredits(data.creditsRemaining);
         setResult({ type: 'ai-success', host, html: data.html, sizeKB: data.sizeKB });
       }
     } catch (err) {
       console.error('AI snapshot failed:', err);
       setResult(null);
-      toast('AI snapshot failed — try again.');
+      toast('Capture failed — try again.');
     } finally {
       setLoading(false);
     }
@@ -181,23 +130,26 @@ export default function App() {
 
   const handleSnapshot = useCallback((url, exampleType) => {
     requireAuth(async () => {
-      if (mode !== 'upload' && !url?.trim()) { toast('Paste a URL first!'); return; }
+      if (!url?.trim()) { toast('Paste a URL first!'); return; }
+      if (loading) return; // prevent double-clicks
+
+      if (mode === 'upload') {
+        toast('Screenshot mode coming soon!');
+        return;
+      }
 
       const SPA_HOSTS = ['linear.app', 'figma.com', 'notion.so'];
       let host = '';
-      if (url) {
-        try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
-      }
+      try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
       const isSpa = SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa';
 
       if (mode === 'quick') {
         if (isSpa) { setResult({ type: 'linear-blocked', host }); return; }
 
-        // Auto-fallback to AI if free is used up and user has credits
         if (!canUseFreeToday(freeUsedToday)) {
           if (credits >= 1) {
             toast('Free limit reached — using 1 AI credit instead.');
-            await callAI({ url, mode: 'ai' }, host);
+            await callBrowserCapture(url, host);
             return;
           }
           toast('Free limit reached — 1 per day. Get AI credits for unlimited snapshots!');
@@ -221,20 +173,10 @@ export default function App() {
 
       } else if (mode === 'ai') {
         if (credits < 1) { toast('No credits! Purchase credits to use AI mode.'); return; }
-        await callAI({ url, mode: 'ai' }, host);
-
-      } else if (mode === 'upload') {
-        toast('Use the upload zone to drop screenshots first.');
+        await callBrowserCapture(url, host);
       }
     });
-  }, [mode, credits, freeUsedToday, user, requireAuth, toast]);
-
-  const handleUploadSnapshot = useCallback(async (images) => {
-    if (!user) { setAuthOpen(true); return; }
-    if (credits < 1) { toast('No credits!'); return; }
-    if (!images?.length) { toast('Upload at least a desktop screenshot.'); return; }
-    await callAI({ mode: 'upload', images }, 'screenshot rebuild');
-  }, [user, credits, toast]);
+  }, [mode, credits, freeUsedToday, user, requireAuth, toast, loading]);
 
   const handleDismissStamp = useCallback(() => {
     setResult(r => r ? { ...r, type: 'linear-dismissed' } : r);
@@ -242,12 +184,13 @@ export default function App() {
 
   return (
     <>
+      <style>{RESPONSIVE_CSS}</style>
       <Nav user={user} credits={credits} onSignIn={() => setAuthOpen(true)} onSignOut={handleSignOut} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={handleSignIn} />
       <Hero />
-      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onUploadSnapshot={handleUploadSnapshot} onRequireAuth={requireAuth} />
+      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} loading={loading} />
       <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
-      <Pricing onBuy={handleBuy} />
+      <Pricing />
       <Features />
       <Footer />
       <Toast message={toastMsg} />

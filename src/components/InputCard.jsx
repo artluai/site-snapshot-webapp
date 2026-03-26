@@ -1,13 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
-export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnapshot, onRequireAuth }) {
+export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth, loading }) {
   const [url, setUrl] = useState('');
-  const [desktopImg, setDesktopImg] = useState(null); // { data, mediaType, name, dims }
-  const [mobileImg, setMobileImg] = useState(null);
-  const dRef = useRef(null);
-  const mRef = useRef(null);
 
-  const handleSubmit = () => onSnapshot(url);
+  const handleSubmit = () => { if (!loading) onSnapshot(url); };
   const handleKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
 
   const tryHN = () => {
@@ -19,74 +15,46 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnap
     onRequireAuth(() => onSnapshot('https://linear.app', 'spa'));
   };
 
-  const readFile = (file) => {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) { reject(new Error('Not an image')); return; }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        const img = new Image();
-        img.onload = () => {
-          resolve({
-            data: base64,
-            mediaType: file.type,
-            name: file.name,
-            dims: `${img.width}×${img.height}`,
-          });
-        };
-        img.src = reader.result;
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleFileDrop = async (e, setter) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const file = e.dataTransfer?.files?.[0] || e.target?.files?.[0];
-    if (!file) return;
-    try {
-      const img = await readFile(file);
-      setter(img);
-    } catch (err) {
-      console.error('File read error:', err);
-    }
-  };
-
-  const handleUploadSubmit = () => {
-    if (!desktopImg) return;
-    const images = [{ data: desktopImg.data, mediaType: desktopImg.mediaType }];
-    if (mobileImg) images.push({ data: mobileImg.data, mediaType: mobileImg.mediaType });
-    onUploadSnapshot(images);
-  };
-
   return (
-    <section style={S.section} id="input-section">
-      <div style={S.card}>
+    <section style={S.section} className="input-section" id="input-section">
+      <div style={S.card} className="input-card">
         <div style={S.label}>PASTE A LINK TO GET STARTED</div>
 
         {mode !== 'upload' && (
-          <div style={S.row}>
+          <div style={S.row} className="input-row">
             <input style={S.field} value={url} onChange={e => setUrl(e.target.value)} onKeyDown={handleKey} placeholder="https://any-website.com" />
-            <button style={S.snap} onClick={handleSubmit}>
-              {mode === 'ai' ? 'AI SNAPSHOT →' : 'SAVE COPY →'}
+            <button
+              style={{ ...S.snap, ...(loading ? { opacity: .5, pointerEvents: 'none' } : {}) }}
+              className="snap-btn"
+              onClick={handleSubmit}
+            >
+              {loading ? 'CAPTURING...' : mode === 'ai' ? '🧠 AI SNAPSHOT →' : 'SAVE COPY →'}
             </button>
           </div>
         )}
 
-        <div style={S.modes}>
+        <div style={S.modes} className="mode-chips">
           {MODES.map(m => (
-            <button key={m.id} style={{ ...S.chip, ...(mode === m.id ? S.chipActive : {}) }} onClick={() => onModeChange(m.id)}>
-              <span style={{ marginRight: 4 }}>{m.emoji}</span>{m.label}
+            <button
+              key={m.id}
+              style={{
+                ...S.chip,
+                ...(mode === m.id ? S.chipActive : {}),
+                ...(m.disabled ? S.chipDisabled : {}),
+              }}
+              onClick={() => m.disabled ? null : onModeChange(m.id)}
+            >
+              <span style={{ marginRight: 4 }}>{m.emoji}</span>
+              {m.label}
+              {m.disabled && <span style={S.soon}>SOON</span>}
             </button>
           ))}
         </div>
 
         <div style={S.modeDesc}>
           {mode === 'quick' && <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>}
-          {mode === 'ai' && <div>AI reads the page like a designer — matches colors, fonts, spacing. Works on everything including JavaScript apps. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong><div style={S.creditNote}>5 credits for $9.99 · 20 credits for $29.99</div></div>}
-          {mode === 'upload' && <div>No link? Drop screenshots. AI rebuilds the site from images. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong><div style={S.creditNote}>5 credits for $9.99 · 20 credits for $29.99</div></div>}
+          {mode === 'ai' && <div>Pro capture — a real browser visits the page, renders everything including JavaScript, and saves a perfect copy. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong><div style={S.creditNote}>5 credits for $9.99 · 20 credits for $29.99</div></div>}
+          {mode === 'upload' && <div>No link? Drop screenshots. AI rebuilds the site from images. <strong style={{ color: '#555' }}>Coming soon.</strong></div>}
         </div>
 
         {/* Free group — compat grid + examples */}
@@ -94,7 +62,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnap
           <div style={{ ...S.freeGroup, ...(mode !== 'quick' ? S.freeGroupDimmed : {}) }}>
             <div style={S.freeLabel}><span style={S.freeBadge}>⚡ FREE</span> These examples and limits apply to the free tier</div>
             <div style={S.freeBody}>
-              <div style={S.compatGrid}>
+              <div style={S.compatGrid} className="compat-grid">
                 <div style={S.compatGood}>
                   <div style={S.compatHead}>✅ Works great on</div>
                   <div style={S.compatItem}><span style={S.compatUrl}>news.ycombinator.com</span></div>
@@ -111,7 +79,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnap
                 </div>
               </div>
               <div style={S.exLabel}>Try an example</div>
-              <div style={S.exGrid}>
+              <div style={S.exGrid} className="example-grid">
                 <div style={S.exCard} onClick={tryHN}>
                   <div style={S.exTop}><span style={S.exBadgeFree}>⚡ FREE</span></div>
                   <div style={S.exUrl}>news.ycombinator.com</div>
@@ -128,57 +96,15 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onUploadSnap
             </div>
           </div>
         )}
-
-        {/* Upload zones — real file handling */}
-        {mode === 'upload' && (
-          <div style={{ marginTop: 16 }}>
-            <div style={S.uploadGrid}>
-              <div
-                style={{ ...S.uploadZone, ...(desktopImg ? S.uploadDone : {}) }}
-                onClick={() => { onRequireAuth(() => dRef.current?.click()); }}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => { onRequireAuth(() => handleFileDrop(e, setDesktopImg)); }}
-              >
-                <input ref={dRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileDrop(e, setDesktopImg)} />
-                {desktopImg && <div style={S.uploadCheck}>✓</div>}
-                <div style={{ fontSize: 36, marginBottom: 8 }}>🖥️</div>
-                <div style={S.uploadTitle}>Desktop view</div>
-                <div style={{ fontSize: 12, color: desktopImg ? '#166534' : '#999' }}>
-                  {desktopImg ? `${desktopImg.name} — ${desktopImg.dims}` : 'Drop or click to upload a screenshot'}
-                </div>
-              </div>
-              <div
-                style={{ ...S.uploadZone, ...(mobileImg ? S.uploadDone : {}) }}
-                onClick={() => { onRequireAuth(() => mRef.current?.click()); }}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => { onRequireAuth(() => handleFileDrop(e, setMobileImg)); }}
-              >
-                <input ref={mRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFileDrop(e, setMobileImg)} />
-                {mobileImg && <div style={S.uploadCheck}>✓</div>}
-                <div style={{ fontSize: 36, marginBottom: 8 }}>📱</div>
-                <div style={S.uploadTitle}>Mobile view</div>
-                <div style={{ fontSize: 12, color: mobileImg ? '#166534' : '#999' }}>
-                  {mobileImg ? `${mobileImg.name} — ${mobileImg.dims}` : 'Optional — enables responsive toggle'}
-                </div>
-              </div>
-            </div>
-            <button
-              style={{ ...S.snap, width: '100%', opacity: desktopImg ? 1 : .35, pointerEvents: desktopImg ? 'auto' : 'none' }}
-              onClick={handleUploadSubmit}
-            >
-              REBUILD FROM SCREENSHOTS →
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );
 }
 
 const MODES = [
-  { id: 'quick', emoji: '⚡', label: 'Free' },
-  { id: 'ai', emoji: '🧠', label: 'AI' },
-  { id: 'upload', emoji: '📸', label: 'AI + Screenshot' },
+  { id: 'quick', emoji: '⚡', label: 'Free', disabled: false },
+  { id: 'ai', emoji: '🧠', label: 'AI', disabled: false },
+  { id: 'upload', emoji: '📸', label: 'AI + Screenshot', disabled: true },
 ];
 
 const S = {
@@ -189,8 +115,10 @@ const S = {
   field: { flex: 1, border: '2px solid #eee', borderRadius: 14, padding: '16px 20px', fontFamily: 'inherit', fontSize: 15, outline: 'none', color: '#1a1a1a' },
   snap: { background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 14, padding: '16px 32px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '-.3px' },
   modes: { display: 'flex', gap: 8, marginTop: 20 },
-  chip: { background: '#f5f5f5', border: '2px solid transparent', borderRadius: 50, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer' },
+  chip: { background: '#f5f5f5', border: '2px solid transparent', borderRadius: 50, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 },
   chipActive: { background: '#1a1a1a', color: '#fff', borderColor: '#1a1a1a' },
+  chipDisabled: { opacity: 0.4, cursor: 'default', pointerEvents: 'none' },
+  soon: { fontSize: 8, fontWeight: 700, background: '#7c5cfc', color: '#fff', padding: '2px 6px', borderRadius: 50, marginLeft: 4, letterSpacing: '.3px' },
   modeDesc: { fontSize: 13, color: '#999', marginTop: 12, lineHeight: 1.5 },
   creditNote: { marginTop: 8, fontSize: 12, color: '#7c5cfc', fontWeight: 600 },
   freeGroup: { border: '2px solid #eee', borderRadius: 16, marginTop: 16, overflow: 'hidden', transition: 'opacity .3s' },
@@ -214,9 +142,4 @@ const S = {
   exUrl: { fontSize: 13, fontWeight: 600, color: '#333' },
   exDesc: { fontSize: 11, color: '#999', lineHeight: 1.3 },
   exArrow: { position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#ccc', fontSize: 14 },
-  uploadGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 },
-  uploadZone: { border: '2px dashed #ddd', borderRadius: 20, padding: '48px 32px', textAlign: 'center', cursor: 'pointer', position: 'relative' },
-  uploadDone: { borderStyle: 'solid', borderColor: '#22c55e', background: '#f0fdf4' },
-  uploadCheck: { position: 'absolute', top: 12, right: 12, width: 24, height: 24, background: '#22c55e', borderRadius: '50%', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  uploadTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 700, marginBottom: 4 },
 };
