@@ -22,7 +22,7 @@ const FEATS = [
   { emoji: '📱', title: 'DESKTOP & MOBILE', desc: 'Built-in switcher lets you preview how the site looks on phone vs. computer. Both views in one file.' },
   { emoji: '🗂️', title: 'KEEPS ALL THE PAGES', desc: "Tabs, menus, dropdowns — everything clickable stays clickable in your copy. Not just a screenshot." },
   { emoji: '🎨', title: 'LOOKS IDENTICAL', desc: 'AI mode matches the exact colors, fonts, and spacing. Your copy looks like the real thing.' },
-  { emoji: '📸', title: 'NO LINK? SCREENSHOT IT', desc: 'Drop a desktop and mobile screenshot. AI rebuilds the full site from the images — layout, colors, fonts, everything.' },
+  { emoji: '📸', title: 'NO LINK? SCREENSHOT IT (BETA)', desc: 'Drop a desktop and mobile screenshot. AI rebuilds the page from images. Works best on clear landing pages and readable screenshots.' },
   { emoji: '🔒', title: 'PRIVATE & FREE', desc: 'Quick mode runs entirely on your device. Nothing leaves your browser. AI mode is optional.' },
 ];
 

@@ -43,7 +43,7 @@ const TIERS = [
     featured: true, badge: 'MOST POPULAR', credits: 5, btnText: 'GET 5 CREDITS →',
     features: [
       { text: 'Everything in Free' }, { text: 'AI design analysis' }, { text: 'Responsive desktop/mobile' },
-      { text: 'Working tabs & navigation' }, { text: 'Screenshot rebuild' }, { text: 'Credits never expire' },
+      { text: 'Working tabs & navigation' }, { text: 'Screenshot rebuild (beta)' }, { text: 'Credits never expire' },
     ],
   },
   {
@@ -51,7 +51,7 @@ const TIERS = [
     credits: 20, btnText: 'GET 20 CREDITS →',
     features: [
       { text: 'Everything in Starter' }, { text: '4× more credits' }, { text: '25% cheaper per snapshot' },
-      { text: 'Priority processing' }, { text: 'Credits never expire' }, { text: 'Rebuild from screenshots' },
+      { text: 'Priority processing' }, { text: 'Credits never expire' }, { text: 'Rebuild from screenshots (beta)' },
     ],
   },
 ];

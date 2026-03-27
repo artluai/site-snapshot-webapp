@@ -52,16 +52,22 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
             <div style={S.uploadGrid} className="upload-grid">
               <label style={S.uploadCard}>
                 <span style={S.uploadTitle}>Desktop screenshot</span>
-                <span style={S.uploadHint}>Required. Upload the main desktop view.</span>
+                <span style={S.uploadHint}>Required. Best results: sharp full-width screenshot with readable text.</span>
                 <input type="file" accept="image/png,image/jpeg,image/webp" style={S.fileInput} onChange={(e) => setDesktopFile(e.target.files?.[0] || null)} />
                 <span style={S.uploadFile}>{desktopFile ? desktopFile.name : 'Choose image'}</span>
               </label>
               <label style={S.uploadCard}>
                 <span style={S.uploadTitle}>Mobile screenshot</span>
-                <span style={S.uploadHint}>Optional. Improves mobile reconstruction.</span>
+                <span style={S.uploadHint}>Optional. Add if you want the mobile layout copied more closely.</span>
                 <input type="file" accept="image/png,image/jpeg,image/webp" style={S.fileInput} onChange={(e) => setMobileFile(e.target.files?.[0] || null)} />
                 <span style={S.uploadFile}>{mobileFile ? mobileFile.name : 'Choose image'}</span>
               </label>
+            </div>
+            <div style={S.uploadTips}>
+              <strong style={{ color: '#1a1a1a' }}>Beta tips:</strong> screenshot mode works best on one page at a time, with crisp text and visible sections. Long pages are supported, but quality can still vary.
+            </div>
+            <div style={S.uploadWarning}>
+              <strong style={{ color: '#7c2d12' }}>Credit warning:</strong> screenshot rebuild is still beta. Jobs use 1 credit even if the result needs manual cleanup or is only partially accurate.
             </div>
             <div style={S.uploadActions}>
               <button style={S.snap} className="snap-btn" onClick={handleSubmit}>UPLOAD + START JOB →</button>
@@ -95,7 +101,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
             <div>Durable AI job — sends the page to a worker, saves the finished HTML as a file, and lets you preview/download it when ready. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
           )}
           {mode === 'upload' && (
-            <div>Screenshot rebuild — uploads images into storage, then the worker turns them into a durable HTML artifact. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
+            <div>Screenshot rebuild <span style={S.betaInline}>BETA</span> — uploads images into storage, then the worker turns them into a durable HTML artifact. Best for simple landing pages and clear screenshots. <strong style={{ color: '#555' }}>1 credit per snapshot, even when the beta output needs cleanup.</strong></div>
           )}
         </div>
 
@@ -143,7 +149,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
 const MODES = [
   { id: 'quick', emoji: '⚡', label: 'Free', disabled: false },
   { id: 'ai', emoji: '🧠', label: 'AI', disabled: false },
-  { id: 'upload', emoji: '📸', label: 'AI + Screenshot', disabled: false },
+  { id: 'upload', emoji: '📸', label: 'AI + Screenshot Beta', disabled: false },
 ];
 
 const S = {
@@ -159,12 +165,15 @@ const S = {
   uploadHint: { fontSize: 12, color: '#777', lineHeight: 1.4 },
   fileInput: { display: 'none' },
   uploadFile: { marginTop: 8, fontSize: 12, color: '#5b21b6', fontWeight: 600 },
+  uploadTips: { marginTop: 12, fontSize: 12, color: '#777', lineHeight: 1.5, background: '#faf7ff', border: '1px solid #ece3ff', borderRadius: 12, padding: '10px 12px' },
+  uploadWarning: { marginTop: 10, fontSize: 12, color: '#9a3412', lineHeight: 1.5, background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 12, padding: '10px 12px' },
   uploadActions: { marginTop: 14, display: 'flex', justifyContent: 'flex-end' },
   modes: { display: 'flex', gap: 8, marginTop: 20 },
   chip: { background: '#f5f5f5', border: '2px solid transparent', borderRadius: 50, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 },
   chipActive: { background: '#1a1a1a', color: '#fff', borderColor: '#1a1a1a' },
   chipDisabled: { opacity: 0.4, cursor: 'default', pointerEvents: 'none' },
   soon: { fontSize: 8, fontWeight: 700, background: '#7c5cfc', color: '#fff', padding: '2px 6px', borderRadius: 50, marginLeft: 4, letterSpacing: '.3px' },
+  betaInline: { display: 'inline-block', fontSize: 10, fontWeight: 700, background: '#ede9fe', color: '#5b21b6', padding: '2px 6px', borderRadius: 999, margin: '0 6px 0 4px', verticalAlign: 'middle', letterSpacing: '.3px' },
   modeDesc: { fontSize: 13, color: '#999', marginTop: 12, lineHeight: 1.5 },
   freeGroup: { border: '2px solid #eee', borderRadius: 16, marginTop: 16, overflow: 'hidden' },
   freeLabel: { background: '#f8f8f8', padding: '10px 16px', fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 6 },

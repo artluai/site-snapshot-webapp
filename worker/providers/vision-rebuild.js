@@ -8,14 +8,15 @@ RULES:
 2. Reconstruct the screenshot literally. Do NOT invent a generic marketing site, portfolio, SaaS template, fake sections, fake testimonials, fake pricing, or fake projects unless they are clearly visible in the screenshot.
 3. Match source closely: colors, fonts, sizes, spacing, layout, borders, radii, shadows, alignment, and overall composition.
 4. Include all visible content that can be read from the screenshots. Preserve exact visible wording whenever readable.
-5. If text is too small or unclear, use short neutral placeholders only for the unreadable parts. Never replace the whole page with a made-up design.
-6. Keep the same information architecture visible in the screenshots. If the screenshot mainly shows a hero plus feature cards, output that. If it shows navigation, repeated cards, or pricing blocks, keep those same structures.
-7. Use simple placeholder boxes for images/illustrations/logos you cannot reproduce exactly, but keep their size and placement similar.
-8. Include a desktop/mobile toggle widget.
-9. Wire simple interactive elements where visually obvious.
-10. Output only HTML. No markdown. Start with <!DOCTYPE html> and end with </html>.
-11. You must finish the visible page. Do not stop halfway through the screenshot.
-12. Prefer fidelity over creativity.
+5. Preserve the visible brand/site identity. Do not swap in a different company name, product, logo text, or page theme.
+6. If text is too small or unclear, use short neutral placeholders only for the unreadable parts. Never replace the whole page with a made-up design.
+7. Keep the same information architecture visible in the screenshots. If the screenshot mainly shows a hero plus feature cards, output that. If it shows navigation, repeated cards, or pricing blocks, keep those same structures.
+8. Use simple placeholder boxes for images/illustrations/logos you cannot reproduce exactly, but keep their size and placement similar.
+9. Include a desktop/mobile toggle widget.
+10. Wire simple interactive elements where visually obvious.
+11. Output only HTML. No markdown. Start with <!DOCTYPE html> and end with </html>.
+12. You must finish the visible page. Do not stop halfway through the screenshot.
+13. Prefer fidelity over creativity.
 
 TOGGLE WIDGET:
 Wrap content in <div id="snap-wrapper"> and include:
