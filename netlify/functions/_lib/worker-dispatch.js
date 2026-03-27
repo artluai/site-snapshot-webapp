@@ -1,11 +1,15 @@
-import { GoogleAuth } from 'google-auth-library';
+import { GoogleAuth, JWT } from 'google-auth-library';
 
 function getGoogleCredentials() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) return undefined;
 
   try {
-    return JSON.parse(raw);
+    const credentials = JSON.parse(raw);
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
+    return credentials;
   } catch (error) {
     throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${error.message}`);
   }
@@ -41,20 +45,33 @@ async function createCloudTask(payload) {
   }
 
   const credentials = getGoogleCredentials();
-  const auth = new GoogleAuth({
-    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-    ...(credentials ? { credentials } : {}),
-  });
+  let accessToken;
 
-  const client = await auth.getClient();
-  const accessToken = await client.getAccessToken();
+  if (credentials?.client_email && credentials?.private_key) {
+    const client = new JWT({
+      email: credentials.client_email,
+      key: credentials.private_key,
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+    accessToken = await client.authorize().then((tokens) => tokens.access_token);
+  } else {
+    const auth = new GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      ...(credentials ? { credentials } : {}),
+    });
+
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
+    accessToken = token.token || token;
+  }
+
   const workerUrl = `${getWorkerUrl()}/jobs/run`;
   const taskUrl = `https://cloudtasks.googleapis.com/v2/projects/${projectId}/locations/${location}/queues/${queue}/tasks`;
 
   const response = await fetch(taskUrl, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken.token || accessToken}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
