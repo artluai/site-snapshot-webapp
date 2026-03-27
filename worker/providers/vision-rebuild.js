@@ -5,12 +5,17 @@ const SCREENSHOT_PROMPT = `Website snapshot generator. Rebuild from screenshots 
 
 RULES:
 1. Single file. All CSS in one <style>. No external CSS/JS. Google Fonts CDN only.
-2. Match source closely: colors, fonts, sizes, spacing, layout.
-3. Include all visible content that can be read from the screenshots.
-4. Include a desktop/mobile toggle widget.
-5. Wire simple interactive elements where visually obvious.
-6. Replace unknown images with simple placeholders rather than broken links.
-7. Output only HTML. No markdown. Start with <!DOCTYPE html> and end with </html>.
+2. Reconstruct the screenshot literally. Do NOT invent a generic marketing site, portfolio, SaaS template, fake sections, fake testimonials, fake pricing, or fake projects unless they are clearly visible in the screenshot.
+3. Match source closely: colors, fonts, sizes, spacing, layout, borders, radii, shadows, alignment, and overall composition.
+4. Include all visible content that can be read from the screenshots. Preserve exact visible wording whenever readable.
+5. If text is too small or unclear, use short neutral placeholders only for the unreadable parts. Never replace the whole page with a made-up design.
+6. Keep the same information architecture visible in the screenshots. If the screenshot mainly shows a hero plus feature cards, output that. If it shows navigation, repeated cards, or pricing blocks, keep those same structures.
+7. Use simple placeholder boxes for images/illustrations/logos you cannot reproduce exactly, but keep their size and placement similar.
+8. Include a desktop/mobile toggle widget.
+9. Wire simple interactive elements where visually obvious.
+10. Output only HTML. No markdown. Start with <!DOCTYPE html> and end with </html>.
+11. You must finish the visible page. Do not stop halfway through the screenshot.
+12. Prefer fidelity over creativity.
 
 TOGGLE WIDGET:
 Wrap content in <div id="snap-wrapper"> and include:
@@ -45,7 +50,7 @@ export async function rebuildFromScreenshots(files) {
 
   imageContent.push({
     type: 'text',
-    text: 'Rebuild this website from the uploaded screenshots as one frozen HTML file.',
+    text: 'Rebuild this website from the uploaded screenshots as one frozen HTML file. Copy the visible structure and wording as literally as possible. Do not invent a generic template.',
   });
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
