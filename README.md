@@ -99,6 +99,11 @@ Your Firebase Storage rules should allow users to upload only into:
 
 and should block direct reads of final artifacts if you want downloads to go only through signed URLs.
 
+Rule files now live in:
+- `firestore.rules`
+- `storage.rules`
+- `firebase.json`
+
 ## Stack
 
 - React + Vite

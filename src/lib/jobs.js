@@ -16,9 +16,23 @@ async function callAuthedFunction(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  const data = await res.json().catch(() => ({}));
+  const rawText = await res.text();
+  let data = {};
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { rawText };
+    }
+  }
+
   if (!res.ok || !data.ok) {
-    throw new Error(data.error || 'Request failed');
+    throw new Error(
+      data.error
+        || data.rawText
+        || `Request failed (${res.status})`,
+    );
   }
 
   return data;

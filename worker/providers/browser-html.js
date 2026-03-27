@@ -85,7 +85,16 @@ export async function captureBrowserHtml(url) {
     throw new Error(`Browser capture failed (${response.status}): ${message}`);
   }
 
-  const html = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+  let html = '';
+
+  if (contentType.includes('application/json')) {
+    const payload = await response.json();
+    html = payload?.data || '';
+  } else {
+    html = await response.text();
+  }
+
   if (!html || html.length < 100) {
     throw new Error('Browser capture returned empty output');
   }

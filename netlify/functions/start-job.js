@@ -14,11 +14,14 @@ export default async function handler(req) {
     return json({ ok: false, error: 'POST only' }, 405);
   }
 
+  let uid = '';
+  let jobId = '';
+
   try {
     const decoded = await verifyUser(req);
-    const uid = decoded.uid;
+    uid = decoded.uid;
     const body = await req.json().catch(() => ({}));
-    const jobId = `${body.jobId || ''}`.trim();
+    jobId = `${body.jobId || ''}`.trim();
     const files = Array.isArray(body.files) ? body.files : [];
 
     if (!jobId) {
@@ -64,6 +67,19 @@ export default async function handler(req) {
 
     return json({ ok: true, jobId, status: 'queued' });
   } catch (error) {
+    if (uid && jobId) {
+      await getJobRef(uid, jobId).update({
+        status: 'failed',
+        updatedAt: new Date().toISOString(),
+        error: { message: error.message || 'Failed to start job' },
+        progress: {
+          phase: 'failed',
+          percent: 100,
+          message: error.message || 'Failed to start job',
+        },
+      }).catch(() => null);
+    }
+
     return json({ ok: false, error: error.message || 'Failed to start job' }, error.statusCode || 500);
   }
 }

@@ -1,5 +1,16 @@
 import { GoogleAuth } from 'google-auth-library';
 
+function getGoogleCredentials() {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) return undefined;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${error.message}`);
+  }
+}
+
 function getWorkerUrl() {
   const workerUrl = process.env.WORKER_URL;
   if (!workerUrl) {
@@ -16,6 +27,10 @@ function getWorkerHeaders() {
   return headers;
 }
 
+function shouldUseDirectDispatch() {
+  return process.env.ALLOW_DIRECT_WORKER_DISPATCH === 'true';
+}
+
 async function createCloudTask(payload) {
   const projectId = process.env.CLOUD_TASKS_PROJECT_ID;
   const location = process.env.CLOUD_TASKS_LOCATION;
@@ -25,8 +40,10 @@ async function createCloudTask(payload) {
     return false;
   }
 
+  const credentials = getGoogleCredentials();
   const auth = new GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    ...(credentials ? { credentials } : {}),
   });
 
   const client = await auth.getClient();
@@ -76,8 +93,13 @@ async function dispatchDirectly(payload) {
 }
 
 export async function dispatchWorkerJob(payload) {
+  if (shouldUseDirectDispatch()) {
+    await dispatchDirectly(payload);
+    return { queuedViaCloudTasks: false };
+  }
+
   const queued = await createCloudTask(payload).catch(async (error) => {
-    if (process.env.ALLOW_DIRECT_WORKER_DISPATCH === 'true') {
+    if (shouldUseDirectDispatch()) {
       await dispatchDirectly(payload);
       return false;
     }

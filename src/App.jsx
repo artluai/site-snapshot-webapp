@@ -234,8 +234,8 @@ export default function App() {
           });
 
           const uploadedFiles = await uploadJobSourceFiles(user.uid, job.jobId, files);
-          await startJob({ jobId: job.jobId, files: uploadedFiles });
           startListeningToJob(user.uid, job.jobId);
+          await startJob({ jobId: job.jobId, files: uploadedFiles });
           return;
         }
 
@@ -245,7 +245,14 @@ export default function App() {
         setResult({ type: 'free-success', host, html, sizeKB });
       } catch (err) {
         console.error('Snapshot failed:', err);
-        setResult(null);
+        const message = err?.message || 'Failed to capture — try a different URL.';
+        const isUploadDispatchFailure = mode === 'upload'
+          && /request failed|worker dispatch failed|cloud tasks enqueue failed/i.test(message);
+
+        if (!isUploadDispatchFailure) {
+          setResult(null);
+        }
+
         toast(err.message || 'Failed to capture — try a different URL.');
       } finally {
         setLoading(false);

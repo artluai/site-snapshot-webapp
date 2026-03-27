@@ -31,6 +31,7 @@ gcloud run deploy "${WORKER_SERVICE_NAME}" \
   --region "${GCP_REGION}" \
   --project "${GCP_PROJECT_ID}" \
   --allow-unauthenticated \
+  --clear-base-image \
   --timeout 900 \
   --memory 1Gi \
   --cpu 1 \
