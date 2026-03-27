@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
 /**
@@ -45,6 +45,25 @@ export async function markFreeUsed(uid) {
   const ref = doc(db, 'users', uid);
   const today = new Date().toISOString().slice(0, 10);
   await updateDoc(ref, { freeUsedToday: today });
+}
+
+/**
+ * Subscribe to the current user's account record so credits stay live.
+ */
+export function subscribeToUser(uid, callback) {
+  const ref = doc(db, 'users', uid);
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) {
+      callback({ credits: 0, freeUsedToday: null });
+      return;
+    }
+
+    const data = snap.data();
+    callback({
+      credits: data.credits || 0,
+      freeUsedToday: data.freeUsedToday || null,
+    });
+  });
 }
 
 /**

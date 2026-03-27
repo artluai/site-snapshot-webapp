@@ -2,28 +2,72 @@ import { useState } from 'react';
 
 export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth }) {
   const [url, setUrl] = useState('');
+  const [desktopFile, setDesktopFile] = useState(null);
+  const [mobileFile, setMobileFile] = useState(null);
 
-  const handleSubmit = () => onSnapshot(url);
+  const handleSubmit = () => {
+    if (mode === 'upload') {
+      onSnapshot({
+        files: [
+          desktopFile ? { slot: 'desktop', blob: desktopFile } : null,
+          mobileFile ? { slot: 'mobile', blob: mobileFile } : null,
+        ].filter(Boolean),
+      });
+      return;
+    }
+
+    onSnapshot({ url });
+  };
   const handleKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
 
   const tryHN = () => {
     setUrl('https://news.ycombinator.com');
-    onRequireAuth(() => onSnapshot('https://news.ycombinator.com', 'blog'));
+    onRequireAuth(() => onSnapshot({ url: 'https://news.ycombinator.com', exampleType: 'blog' }));
   };
   const tryLinear = () => {
     setUrl('https://linear.app');
-    onRequireAuth(() => onSnapshot('https://linear.app', 'spa'));
+    onRequireAuth(() => onSnapshot({ url: 'https://linear.app', exampleType: 'spa' }));
   };
+
+  const primaryButtonLabel = mode === 'ai'
+    ? 'START AI JOB →'
+    : mode === 'upload'
+      ? 'UPLOAD + START JOB →'
+      : 'SAVE COPY →';
 
   return (
     <section style={S.section} className="input-section" id="input-section">
       <div style={S.card} className="input-card">
         <div style={S.label}>PASTE A LINK TO GET STARTED</div>
 
-        <div style={S.row} className="input-row">
-          <input style={S.field} value={url} onChange={e => setUrl(e.target.value)} onKeyDown={handleKey} placeholder="https://any-website.com" />
-          <button style={S.snap} className="snap-btn" onClick={handleSubmit}>SAVE COPY →</button>
-        </div>
+        {mode !== 'upload' && (
+          <div style={S.row} className="input-row">
+            <input style={S.field} value={url} onChange={e => setUrl(e.target.value)} onKeyDown={handleKey} placeholder="https://any-website.com" />
+            <button style={S.snap} className="snap-btn" onClick={handleSubmit}>{primaryButtonLabel}</button>
+          </div>
+        )}
+
+        {mode === 'upload' && (
+          <>
+            <div style={S.uploadGrid} className="upload-grid">
+              <label style={S.uploadCard}>
+                <span style={S.uploadTitle}>Desktop screenshot</span>
+                <span style={S.uploadHint}>Required. Upload the main desktop view.</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp" style={S.fileInput} onChange={(e) => setDesktopFile(e.target.files?.[0] || null)} />
+                <span style={S.uploadFile}>{desktopFile ? desktopFile.name : 'Choose image'}</span>
+              </label>
+              <label style={S.uploadCard}>
+                <span style={S.uploadTitle}>Mobile screenshot</span>
+                <span style={S.uploadHint}>Optional. Improves mobile reconstruction.</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp" style={S.fileInput} onChange={(e) => setMobileFile(e.target.files?.[0] || null)} />
+                <span style={S.uploadFile}>{mobileFile ? mobileFile.name : 'Choose image'}</span>
+              </label>
+            </div>
+            <div style={S.uploadActions}>
+              <button style={S.snap} className="snap-btn" onClick={handleSubmit}>UPLOAD + START JOB →</button>
+            </div>
+          </>
+        )}
 
         <div style={S.modes} className="mode-chips">
           {MODES.map(m => (
@@ -44,7 +88,15 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
         </div>
 
         <div style={S.modeDesc}>
-          <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>
+          {mode === 'quick' && (
+            <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>
+          )}
+          {mode === 'ai' && (
+            <div>Durable AI job — sends the page to a worker, saves the finished HTML as a file, and lets you preview/download it when ready. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
+          )}
+          {mode === 'upload' && (
+            <div>Screenshot rebuild — uploads images into storage, then the worker turns them into a durable HTML artifact. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
+          )}
         </div>
 
         <div style={S.freeGroup}>
@@ -90,8 +142,8 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
 
 const MODES = [
   { id: 'quick', emoji: '⚡', label: 'Free', disabled: false },
-  { id: 'ai', emoji: '🧠', label: 'AI', disabled: true },
-  { id: 'upload', emoji: '📸', label: 'AI + Screenshot', disabled: true },
+  { id: 'ai', emoji: '🧠', label: 'AI', disabled: false },
+  { id: 'upload', emoji: '📸', label: 'AI + Screenshot', disabled: false },
 ];
 
 const S = {
@@ -101,6 +153,13 @@ const S = {
   row: { display: 'flex', gap: 10 },
   field: { flex: 1, border: '2px solid #eee', borderRadius: 14, padding: '16px 20px', fontFamily: 'inherit', fontSize: 15, outline: 'none', color: '#1a1a1a' },
   snap: { background: '#1a1a1a', color: '#fff', border: 'none', borderRadius: 14, padding: '16px 32px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '-.3px' },
+  uploadGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+  uploadCard: { display: 'flex', flexDirection: 'column', gap: 8, border: '2px dashed #ddd', borderRadius: 16, padding: 20, cursor: 'pointer', background: '#fafafa' },
+  uploadTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, color: '#1a1a1a' },
+  uploadHint: { fontSize: 12, color: '#777', lineHeight: 1.4 },
+  fileInput: { display: 'none' },
+  uploadFile: { marginTop: 8, fontSize: 12, color: '#5b21b6', fontWeight: 600 },
+  uploadActions: { marginTop: 14, display: 'flex', justifyContent: 'flex-end' },
   modes: { display: 'flex', gap: 8, marginTop: 20 },
   chip: { background: '#f5f5f5', border: '2px solid transparent', borderRadius: 50, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 },
   chipActive: { background: '#1a1a1a', color: '#fff', borderColor: '#1a1a1a' },

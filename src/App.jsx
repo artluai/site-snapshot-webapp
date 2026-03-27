@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
-import { loadOrCreateUser, canUseFreeToday, markFreeUsed } from './lib/credits.js';
+import { loadOrCreateUser, canUseFreeToday, markFreeUsed, subscribeToUser } from './lib/credits.js';
 import { fetchAndClean } from './lib/snapshot-free.js';
+import { createJob, getArtifactUrl, startJob, subscribeToJob } from './lib/jobs.js';
+import { uploadJobSourceFiles } from './lib/uploads.js';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import AuthModal from './components/AuthModal.jsx';
@@ -51,6 +53,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef(null);
+  const userDocUnsubRef = useRef(null);
+  const jobUnsubRef = useRef(null);
+  const artifactRequestKey = useRef('');
 
   const toast = useCallback((msg) => {
     setToastMsg(msg);
@@ -58,24 +63,103 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToastMsg(''), 3000);
   }, []);
 
+  const stopListeningToJob = useCallback(() => {
+    jobUnsubRef.current?.();
+    jobUnsubRef.current = null;
+    artifactRequestKey.current = '';
+  }, []);
+
+  const syncJobResult = useCallback(async (job) => {
+    if (!job) return;
+
+    const host = job.source?.host || 'snapshot';
+
+    if (job.status === 'queued' || job.status === 'running' || job.status === 'awaiting_upload') {
+      setResult({
+        type: 'job-progress',
+        host,
+        phase: job.progress?.phase || 'queued',
+        percent: job.progress?.percent ?? 0,
+        message: job.progress?.message || 'Processing your job',
+      });
+      return;
+    }
+
+    if (job.status === 'succeeded') {
+      const requestKey = `${job.id}:${job.result?.storagePath || ''}`;
+      if (!job.result?.storagePath || artifactRequestKey.current === requestKey) return;
+
+      artifactRequestKey.current = requestKey;
+      try {
+        const [preview, download] = await Promise.all([
+          getArtifactUrl(job.id, 'inline'),
+          getArtifactUrl(job.id, 'attachment'),
+        ]);
+
+        setResult({
+          type: 'ai-success',
+          host,
+          previewUrl: preview.url,
+          downloadUrl: download.url,
+          fileName: job.result.fileName,
+          sizeKB: Math.round((job.result.bytes || 0) / 1024),
+        });
+      } catch (error) {
+        console.error('Artifact URL error:', error);
+        setResult({
+          type: 'job-failed',
+          host,
+          message: 'Snapshot finished, but its download link could not be loaded.',
+        });
+      }
+      return;
+    }
+
+    if (job.status === 'failed') {
+      setResult({
+        type: 'job-failed',
+        host,
+        message: job.error?.message || 'The job failed before the snapshot was ready.',
+      });
+    }
+  }, []);
+
+  const startListeningToJob = useCallback((uid, jobId) => {
+    stopListeningToJob();
+    jobUnsubRef.current = subscribeToJob(uid, jobId, (job) => {
+      void syncJobResult(job);
+    });
+  }, [stopListeningToJob, syncJobResult]);
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      userDocUnsubRef.current?.();
+      userDocUnsubRef.current = null;
+
       if (firebaseUser) {
         try {
-          const data = await loadOrCreateUser(firebaseUser.uid, firebaseUser.email);
           setUser({ uid: firebaseUser.uid, name: firebaseUser.displayName || 'User', email: firebaseUser.email });
-          setCredits(data.credits);
-          setFreeUsedToday(data.freeUsedToday);
+          await loadOrCreateUser(firebaseUser.uid, firebaseUser.email);
+          userDocUnsubRef.current = subscribeToUser(firebaseUser.uid, (data) => {
+            setCredits(data.credits);
+            setFreeUsedToday(data.freeUsedToday);
+          });
         } catch (err) {
           console.error('Failed to load user data:', err);
           toast('Error loading account — try again.');
         }
       } else {
+        stopListeningToJob();
         setUser(null); setCredits(0); setFreeUsedToday(null); setResult(null);
       }
     });
-    return () => unsub();
-  }, [toast]);
+    return () => {
+      unsub();
+      userDocUnsubRef.current?.();
+      stopListeningToJob();
+      clearTimeout(toastTimer.current);
+    };
+  }, [stopListeningToJob, toast]);
 
   const requireAuth = useCallback((fn) => {
     if (!user) { setAuthOpen(true); return; }
@@ -99,30 +183,62 @@ export default function App() {
     catch (err) { console.error('Sign-out error:', err); }
   }, [toast]);
 
-  const handleSnapshot = useCallback((url, exampleType) => {
+  const handleSnapshot = useCallback((payload) => {
     requireAuth(async () => {
-      if (!url?.trim()) { toast('Paste a URL first!'); return; }
+      const url = payload?.url || '';
+      const exampleType = payload?.exampleType;
+      const files = Array.isArray(payload?.files) ? payload.files : [];
 
-      if (mode === 'ai' || mode === 'upload') {
-        toast('AI mode coming soon!');
+      if (mode !== 'upload' && !url?.trim()) { toast('Paste a URL first!'); return; }
+      if (mode === 'upload' && !files.some((file) => file.slot === 'desktop')) {
+        toast('Upload at least a desktop screenshot first.');
         return;
       }
 
       const SPA_HOSTS = ['linear.app', 'figma.com', 'notion.so'];
-      let host = '';
-      try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = url; }
-      const isSpa = SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa';
+      let host = mode === 'upload' ? 'uploaded screenshots' : '';
+      try { host = new URL(url.startsWith('http') ? url : 'https://' + url).hostname; } catch { host = mode === 'upload' ? 'uploaded screenshots' : url; }
+      const isSpa = mode !== 'upload' && (SPA_HOSTS.some(d => host.includes(d)) || exampleType === 'spa');
 
-      if (isSpa) { setResult({ type: 'linear-blocked', host }); return; }
+      if (mode === 'quick' && isSpa) { setResult({ type: 'linear-blocked', host }); return; }
 
-      if (!canUseFreeToday(freeUsedToday)) {
-        toast('Free limit reached — 1 per day. AI mode coming soon!');
+      if (mode === 'quick' && !canUseFreeToday(freeUsedToday)) {
+        toast('Free limit reached — 1 per day. Switch to AI mode for more.');
         return;
       }
 
       setLoading(true);
-      setResult({ type: 'loading', host });
+      setResult({ type: mode === 'quick' ? 'loading' : 'job-progress', host, phase: 'creating', percent: 2, message: 'Creating your job' });
       try {
+        if (mode === 'ai') {
+          const job = await createJob({ mode: 'browser_html', url });
+          setResult({
+            type: 'job-progress',
+            host: job.source?.host || host,
+            phase: 'queued',
+            percent: 5,
+            message: 'Job queued and waiting for the worker',
+          });
+          startListeningToJob(user.uid, job.jobId);
+          return;
+        }
+
+        if (mode === 'upload') {
+          const job = await createJob({ mode: 'vision_rebuild' });
+          setResult({
+            type: 'job-progress',
+            host,
+            phase: 'uploading_inputs',
+            percent: 10,
+            message: 'Uploading screenshots for the worker',
+          });
+
+          const uploadedFiles = await uploadJobSourceFiles(user.uid, job.jobId, files);
+          await startJob({ jobId: job.jobId, files: uploadedFiles });
+          startListeningToJob(user.uid, job.jobId);
+          return;
+        }
+
         const { html, sizeKB } = await fetchAndClean(url);
         await markFreeUsed(user.uid);
         setFreeUsedToday(new Date().toISOString().slice(0, 10));
@@ -135,7 +251,7 @@ export default function App() {
         setLoading(false);
       }
     });
-  }, [mode, freeUsedToday, user, requireAuth, toast]);
+  }, [mode, freeUsedToday, user, requireAuth, startListeningToJob, toast]);
 
   const handleDismissStamp = useCallback(() => {
     setResult(r => r ? { ...r, type: 'linear-dismissed' } : r);
@@ -148,7 +264,7 @@ export default function App() {
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={handleSignIn} />
       <Hero />
       <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} />
-      <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => toast('AI mode coming soon!')} toast={toast} />
+      <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
       <Pricing />
       <Features />
       <Footer />

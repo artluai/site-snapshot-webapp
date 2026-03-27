@@ -3,7 +3,6 @@
 // Screenshot mode: Claude vision rebuilds from images (streaming).
 // Server-side: auth verify, credit check, then either browser capture or Claude vision.
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fetch from 'node-fetch';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -241,7 +240,9 @@ export default async function handler(req) {
                   fullHtml += p.delta.text;
                   await writer.write(enc.encode(p.delta.text));
                 }
-              } catch {}
+              } catch {
+                // Ignore malformed SSE frames while streaming partial output.
+              }
             }
           }
           const sizeKB = Math.round(new TextEncoder().encode(fullHtml).length / 1024);
@@ -249,7 +250,9 @@ export default async function handler(req) {
           await writer.close();
         } catch (err) {
           console.error('[snapshot-ai] stream error:', err.message);
-          try { await writer.close(); } catch {}
+          try { await writer.close(); } catch {
+            // The stream may already be closed when cleanup runs.
+          }
         }
       })();
 

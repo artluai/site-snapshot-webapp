@@ -10,6 +10,16 @@ const HEADERS = {
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB cap
 
+function stripControlChars(value) {
+  let cleaned = '';
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if ((code >= 0 && code <= 31) || code === 127) continue;
+    cleaned += char;
+  }
+  return cleaned;
+}
+
 export default async function handler(req) {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -51,7 +61,7 @@ export default async function handler(req) {
     }
 
     // Sanitize — strip control chars from URL per best-practices.md
-    const cleanUrl = url.replace(/[\x00-\x1f\x7f]/g, '');
+    const cleanUrl = stripControlChars(url);
 
     // Fetch the page
     const res = await fetch(cleanUrl, {

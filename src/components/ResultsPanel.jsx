@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { downloadHTML } from '../lib/snapshot-free.js';
 
-export default function ResultsPanel({ result, mode, loading, onDismissStamp, onUpgradeMode, toast }) {
+export default function ResultsPanel({ result, onDismissStamp, onUpgradeMode, toast }) {
   const ref = useRef(null);
   useEffect(() => {
     if (result) ref.current?.scrollIntoView({ behavior: 'smooth' });
@@ -12,32 +12,41 @@ export default function ResultsPanel({ result, mode, loading, onDismissStamp, on
   return (
     <section style={S.section} className="result-section" ref={ref}>
       {result.type === 'loading' && <LoadingResult host={result.host} label="Fetching" />}
-      {result.type === 'ai-loading' && <LoadingResult host={result.host} label="Capturing" ai />}
+      {result.type === 'job-progress' && (
+        <JobProgressResult
+          host={result.host}
+          phase={result.phase}
+          percent={result.percent}
+          message={result.message}
+        />
+      )}
       {result.type === 'free-success' && <SuccessResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} onUpgrade={onUpgradeMode} variant="free" />}
-      {result.type === 'ai-success' && <SuccessResult host={result.host} html={result.html} sizeKB={result.sizeKB} toast={toast} variant="ai" />}
+      {result.type === 'ai-success' && (
+        <RemoteSuccessResult
+          host={result.host}
+          previewUrl={result.previewUrl}
+          downloadUrl={result.downloadUrl}
+          sizeKB={result.sizeKB}
+          fileName={result.fileName}
+          toast={toast}
+        />
+      )}
+      {result.type === 'job-failed' && <FailedJobResult host={result.host} message={result.message} />}
       {(result.type === 'linear-blocked' || result.type === 'linear-dismissed') && (
-        <LinearResult blocked={result.type === 'linear-blocked'} host={result.host} onDismiss={onDismissStamp} toast={toast} />
+        <LinearResult blocked={result.type === 'linear-blocked'} host={result.host} onDismiss={onDismissStamp} />
       )}
     </section>
   );
 }
 
 function StatusCard({ steps, variant }) {
-  const [visible, setVisible] = useState([]);
-  useEffect(() => {
-    setVisible([]);
-    steps.forEach((_, i) => {
-      setTimeout(() => setVisible(v => [...v, i]), (i + 1) * 400);
-    });
-  }, [steps]);
-
   const bg = variant === 'green' ? '#f0fdf4' : variant === 'purple' ? '#f5f3ff' : '#fffbeb';
   const border = variant === 'green' ? '#bbf7d0' : variant === 'purple' ? '#ddd6fe' : '#fde68a';
 
   return (
     <div style={{ ...S.status, background: bg, borderColor: border }}>
       {steps.map((s, i) => (
-        <div key={i} style={{ ...S.statusItem, opacity: visible.includes(i) ? 1 : 0, transform: visible.includes(i) ? 'translateY(0)' : 'translateY(8px)', transition: 'all .3s' }}>
+        <div key={i} style={S.statusItem}>
           <span style={{ ...S.dot, background: variant === 'purple' ? '#7c5cfc' : '#22c55e' }} />
           {s}
         </div>
@@ -58,6 +67,32 @@ function LoadingResult({ host, label, ai }) {
       </div>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </div>
+  );
+}
+
+function JobProgressResult({ host, phase, percent, message }) {
+  const pct = typeof percent === 'number' ? Math.max(0, Math.min(100, percent)) : 0;
+
+  return (
+    <>
+      <StatusCard
+        variant="purple"
+        steps={[
+          `Job created for ${host}`,
+          message || 'Waiting for the worker to progress the job',
+          `${pct}% complete · phase: ${phase || 'queued'}`,
+        ]}
+      />
+      <div style={S.progressCard}>
+        <div style={S.progressBar}>
+          <div style={{ ...S.progressFill, width: `${pct}%` }} />
+        </div>
+        <div style={S.progressMeta}>
+          <span>{message || 'Processing your snapshot'}</span>
+          <strong>{pct}%</strong>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -123,7 +158,61 @@ function SuccessResult({ host, html, sizeKB, toast, onUpgrade, variant }) {
   );
 }
 
-function LinearResult({ blocked, host, onDismiss, toast }) {
+function RemoteSuccessResult({ host, previewUrl, downloadUrl, sizeKB, fileName, toast }) {
+  const [view, setView] = useState('desktop');
+
+  const handleDownload = () => {
+    window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    toast(`Opening ${fileName || 'snapshot.html'}`);
+  };
+
+  return (
+    <>
+      <StatusCard variant="purple" steps={[
+        `Loaded ${host} in the background worker`,
+        'Saved the final HTML as a durable artifact',
+        `Snapshot ready — ${sizeKB}KB file ✓`,
+      ]} />
+      <div style={S.preview}>
+        <div style={S.previewBar}>
+          <div style={S.dots}><span style={{ ...S.dotC, background: '#ff6b6b' }} /><span style={{ ...S.dotC, background: '#fbbf24' }} /><span style={{ ...S.dotC, background: '#22c55e' }} /></div>
+          <span style={S.previewTitle}>snapshot job — {host}</span>
+          <div style={S.toggle}>
+            <button style={{ ...S.toggleBtn, ...(view === 'desktop' ? S.toggleActive : {}) }} onClick={() => setView('desktop')}>Desktop</button>
+            <button style={{ ...S.toggleBtn, ...(view === 'mobile' ? S.toggleActive : {}) }} onClick={() => setView('mobile')}>Mobile</button>
+          </div>
+        </div>
+        <div className="preview-frame" style={{ ...S.frame, ...(view === 'mobile' ? { maxWidth: 390, margin: '0 auto', height: 500 } : {}) }}>
+          <iframe
+            src={previewUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            sandbox="allow-same-origin"
+            title={`Snapshot of ${host}`}
+          />
+        </div>
+      </div>
+      <div style={S.actions}>
+        <button style={S.btnPrimary} onClick={handleDownload}>OPEN / DOWNLOAD FILE</button>
+      </div>
+    </>
+  );
+}
+
+function FailedJobResult({ host, message }) {
+  return (
+    <div style={{ ...S.status, background: '#fef2f2', borderColor: '#fecaca' }}>
+      <div style={S.statusItem}>
+        <span style={{ ...S.dot, background: '#dc2626' }} />
+        Job failed for {host}
+      </div>
+      <div style={{ paddingLeft: 18, fontSize: 12, color: '#7f1d1d', marginTop: 4 }}>
+        {message}
+      </div>
+    </div>
+  );
+}
+
+function LinearResult({ blocked, host, onDismiss }) {
   return (
     <div style={S.preview}>
       <div style={S.previewBar}>
@@ -196,6 +285,10 @@ const S = {
   toggleBtn: { background: '#f0f0f0', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', color: '#999', fontFamily: 'inherit' },
   toggleActive: { background: '#1a1a1a', color: '#fff' },
   frame: { height: 340, background: '#fafafa', overflow: 'hidden', transition: 'all .3s' },
+  progressCard: { background: '#fff', border: '2px solid #eee', borderRadius: 20, padding: '20px 24px', marginBottom: 20, boxShadow: '0 4px 24px rgba(0,0,0,.04)' },
+  progressBar: { height: 12, background: '#f3f4f6', borderRadius: 999, overflow: 'hidden', marginBottom: 12 },
+  progressFill: { height: '100%', background: 'linear-gradient(90deg,#7c5cfc 0%,#5eead4 100%)', borderRadius: 999, transition: 'width .3s ease' },
+  progressMeta: { display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 12, color: '#666' },
   actions: { display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' },
   btnPrimary: { background: '#1a1a1a', color: '#fff', border: '2px solid #1a1a1a', borderRadius: 50, padding: '12px 24px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '-.2px' },
   btnGhost: { background: '#fff', color: '#1a1a1a', border: '2px solid #ddd', borderRadius: 50, padding: '12px 24px', fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '-.2px' },
