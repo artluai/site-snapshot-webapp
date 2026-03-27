@@ -37,6 +37,20 @@ async function loadImageAsContent(file) {
   };
 }
 
+function sortScreenshotFiles(files) {
+  const slotOrder = { desktop: 0, mobile: 1 };
+
+  return [...files].sort((left, right) => {
+    const leftSlot = slotOrder[left.slot] ?? 99;
+    const rightSlot = slotOrder[right.slot] ?? 99;
+    if (leftSlot !== rightSlot) return leftSlot - rightSlot;
+
+    const leftSegment = Number(left.segmentIndex || 0);
+    const rightSegment = Number(right.segmentIndex || 0);
+    return leftSegment - rightSegment;
+  });
+}
+
 export async function rebuildFromScreenshots(files) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -44,13 +58,24 @@ export async function rebuildFromScreenshots(files) {
   }
 
   const imageContent = [];
-  for (const file of files) {
+  for (const file of sortScreenshotFiles(files)) {
+    const segmentCount = Number(file.segmentCount || 1);
+    const segmentIndex = Number(file.segmentIndex || 0);
+    const slotLabel = file.slot === 'mobile' ? 'mobile' : 'desktop';
+
+    imageContent.push({
+      type: 'text',
+      text: segmentCount > 1
+        ? `${slotLabel} screenshot section ${segmentIndex + 1} of ${segmentCount}, ordered from top to bottom on the same page.`
+        : `${slotLabel} screenshot.`,
+    });
+
     imageContent.push(await loadImageAsContent(file));
   }
 
   imageContent.push({
     type: 'text',
-    text: 'Rebuild this website from the uploaded screenshots as one frozen HTML file. Copy the visible structure and wording as literally as possible. Do not invent a generic template.',
+    text: 'Rebuild this website from the uploaded screenshots as one frozen HTML file. Treat multiple sections from the same slot as one continuous page from top to bottom. Copy the visible structure and wording as literally as possible. Do not invent a generic template.',
   });
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
