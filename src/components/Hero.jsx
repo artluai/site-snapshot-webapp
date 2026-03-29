@@ -28,9 +28,9 @@ export default function Hero() {
       <div style={S.text}>
         <h1 style={S.h1} className="hero-title">
           <span style={S.mint}>SAVE</span> A COPY OF{' '}
-          <span style={S.yellow}>ANY WEBSITE</span> IN SECONDS
+          <span style={S.yellow}>ANY WEBSITE PAGE</span> IN SECONDS
         </h1>
-        <p style={S.sub} className="hero-desc">Paste a link. Get a perfect copy you can download, share, or keep forever. No install. Just paste and go.</p>
+        <p style={S.sub} className="hero-desc">Paste a page link. Get a clean copy you can download, share, or keep forever. No install. Just paste and go.</p>
         <button style={S.cta} onClick={() => document.querySelector('#input-section')?.scrollIntoView({ behavior: 'smooth' })}>
           TRY IT FREE →
         </button>
