@@ -1,9 +1,9 @@
-export default function Pricing() {
+export default function Pricing({ user, loadingPack, onBuy }) {
   return (
     <section style={S.section} className="pricing-section" id="pricing">
       <div style={S.header}>
         <h2 style={S.h2}>SIMPLE PRICING</h2>
-        <p style={S.sub}>Free mode is free forever. AI credits coming soon.</p>
+        <p style={S.sub}>Free mode is free forever. AI credits power url snapshots and screenshot rebuilds.</p>
       </div>
       <div style={S.grid} className="pricing-grid">
         {TIERS.map((t, i) => (
@@ -19,8 +19,17 @@ export default function Pricing() {
               ))}
             </div>
             {t.btnText && (
-              <button style={{ ...S.btn, ...(t.featured ? S.btnPurple : S.btnDark), opacity: .4, cursor: 'default' }}>
-                COMING SOON
+              <button
+                style={{
+                  ...S.btn,
+                  ...(t.featured ? S.btnPurple : S.btnDark),
+                  opacity: loadingPack === t.pack ? 0.75 : 1,
+                  cursor: loadingPack === t.pack ? 'wait' : 'pointer',
+                }}
+                onClick={() => onBuy?.(t.pack)}
+                disabled={loadingPack === t.pack}
+              >
+                {loadingPack === t.pack ? 'OPENING CHECKOUT...' : (user ? t.btnText : 'SIGN IN TO BUY')}
               </button>
             )}
           </div>
@@ -39,16 +48,16 @@ const TIERS = [
     ],
   },
   {
-    emoji: '🧠', name: 'STARTER', price: '$9', cents: '.99', perUnit: '5 AI credits · $2 each',
-    featured: true, badge: 'MOST POPULAR', credits: 5, btnText: 'GET 5 CREDITS →',
+    emoji: '🧠', name: 'STARTER', price: '$9', cents: '.99', perUnit: '4 AI credits · $2.50 each',
+    featured: true, badge: 'MOST POPULAR', pack: 'starter', credits: 4, btnText: 'GET 4 CREDITS →',
     features: [
       { text: 'Everything in Free' }, { text: 'AI design analysis' }, { text: 'Responsive desktop/mobile' },
       { text: 'Working tabs & navigation' }, { text: 'Screenshot rebuild (beta)' }, { text: 'Credits never expire' },
     ],
   },
   {
-    emoji: '🚀', name: 'PRO PACK', price: '$29', cents: '.99', perUnit: '20 AI credits · $1.50 each',
-    credits: 20, btnText: 'GET 20 CREDITS →',
+    emoji: '🚀', name: 'PRO PACK', price: '$29', cents: '.99', perUnit: '15 AI credits · $2 each',
+    pack: 'pro', credits: 15, btnText: 'GET 15 CREDITS →',
     features: [
       { text: 'Everything in Starter' }, { text: '4× more credits' }, { text: '25% cheaper per snapshot' },
       { text: 'Priority processing' }, { text: 'Credits never expire' }, { text: 'Rebuild from screenshots (beta)' },

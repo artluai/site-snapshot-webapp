@@ -5,6 +5,8 @@ import { loadOrCreateUser, canUseFreeToday, markFreeUsed, subscribeToUser } from
 import { fetchAndClean } from './lib/snapshot-free.js';
 import { createJob, getArtifactUrl, startJob, subscribeToJob } from './lib/jobs.js';
 import { uploadJobSourceFiles } from './lib/uploads.js';
+import { createCheckoutSession } from './lib/billing.js';
+import { initGoogleTag, trackCheckoutStarted, trackPurchaseCompleted } from './lib/analytics.js';
 import Nav from './components/Nav.jsx';
 import Hero from './components/Hero.jsx';
 import AuthModal from './components/AuthModal.jsx';
@@ -51,11 +53,13 @@ export default function App() {
   const [mode, setMode] = useState('quick');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [checkoutPack, setCheckoutPack] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef(null);
   const userDocUnsubRef = useRef(null);
   const jobUnsubRef = useRef(null);
   const artifactRequestKey = useRef('');
+  const checkoutHandledRef = useRef('');
 
   const toast = useCallback((msg) => {
     setToastMsg(msg);
@@ -132,6 +136,10 @@ export default function App() {
   }, [stopListeningToJob, syncJobResult]);
 
   useEffect(() => {
+    initGoogleTag();
+  }, []);
+
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       userDocUnsubRef.current?.();
       userDocUnsubRef.current = null;
@@ -161,6 +169,33 @@ export default function App() {
     };
   }, [stopListeningToJob, toast]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    const pack = params.get('pack') || '';
+    const sessionId = params.get('session_id') || '';
+
+    if (!checkout) return;
+
+    const checkoutKey = `${checkout}:${pack}:${sessionId}`;
+    if (checkoutHandledRef.current === checkoutKey) return;
+    checkoutHandledRef.current = checkoutKey;
+
+    if (checkout === 'success') {
+      trackPurchaseCompleted({ pack, transactionId: sessionId });
+      toast('Payment received. Credits should appear in a few seconds.');
+    } else if (checkout === 'cancelled') {
+      toast('Checkout canceled.');
+    }
+
+    params.delete('checkout');
+    params.delete('pack');
+    params.delete('session_id');
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [toast]);
+
   const requireAuth = useCallback((fn) => {
     if (!user) { setAuthOpen(true); return; }
     fn();
@@ -182,6 +217,23 @@ export default function App() {
     try { await signOut(auth); toast('Signed out.'); }
     catch (err) { console.error('Sign-out error:', err); }
   }, [toast]);
+
+  const handleBuyCredits = useCallback((pack) => {
+    requireAuth(async () => {
+      if (!pack) return;
+
+      setCheckoutPack(pack);
+      try {
+        trackCheckoutStarted(pack);
+        const session = await createCheckoutSession(pack);
+        window.location.href = session.url;
+      } catch (err) {
+        console.error('Checkout error:', err);
+        toast(err.message || 'Failed to open checkout.');
+        setCheckoutPack('');
+      }
+    });
+  }, [requireAuth, toast]);
 
   const handleSnapshot = useCallback((payload) => {
     requireAuth(async () => {
@@ -272,7 +324,7 @@ export default function App() {
       <Hero />
       <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} />
       <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
-      <Pricing />
+      <Pricing user={user} loadingPack={checkoutPack} onBuy={handleBuyCredits} />
       <Features />
       <Footer />
       <Toast message={toastMsg} />

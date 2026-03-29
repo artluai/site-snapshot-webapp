@@ -26,8 +26,18 @@ Env vars needed on Netlify:
 - `ANTHROPIC_API_KEY` — for AI snapshot generation
 - `STRIPE_SECRET_KEY` — for credit purchases
 - `STRIPE_WEBHOOK_SECRET` — for payment confirmation
+- `STRIPE_PRICE_STARTER` — Stripe price id for the 4-credit pack
+- `STRIPE_PRICE_PRO` — Stripe price id for the 15-credit pack
 - `FIREBASE_SERVICE_ACCOUNT` — JSON string for admin SDK in functions
 - All `VITE_FIREBASE_*` vars above
+- Optional frontend tracking vars:
+  - `VITE_GOOGLE_TAG_ID`
+  - `VITE_GOOGLE_ADS_CONVERSION_ID`
+  - `VITE_GOOGLE_ADS_CHECKOUT_LABEL`
+  - `VITE_GOOGLE_ADS_PURCHASE_LABEL`
+  - `VITE_PRIVACY_URL`
+  - `VITE_TERMS_URL`
+  - `VITE_CONTACT_URL`
 
 New job-pipeline vars:
 - `WORKER_URL` — Cloud Run worker base URL
@@ -56,7 +66,7 @@ Supported job types in the repo now:
 
 ## Worker Deploy
 
-The worker is packaged from [worker/Dockerfile](/Users/ralphxu/Documents/Projects/site-snapshot-webapp/worker/Dockerfile).
+The worker is packaged from `worker/Dockerfile`.
 
 Minimum worker env vars:
 - `FIREBASE_SERVICE_ACCOUNT`
@@ -110,7 +120,40 @@ Rule files now live in:
 - Firebase Auth (Google) + Firestore
 - Netlify Functions
 - Stripe (credit packs)
+- Google Ads / Google tag (optional conversion tracking)
 - Claude API (AI snapshots)
+
+## Stripe Setup
+
+1. Create one product for each credit pack in Stripe:
+   - Starter — 4 AI credits — $9.99 one-time
+   - Pro Pack — 15 AI credits — $29.99 one-time
+2. Copy the Stripe Price IDs into Netlify:
+   - `STRIPE_PRICE_STARTER`
+   - `STRIPE_PRICE_PRO`
+3. Set the webhook endpoint in Stripe to:
+   - `https://your-site-domain/.netlify/functions/stripe-webhook`
+4. Subscribe the webhook to:
+   - `checkout.session.completed`
+5. Copy Stripe's signing secret into:
+   - `STRIPE_WEBHOOK_SECRET`
+
+The webhook is the source of truth for granting credits. checkout success in the browser should not grant credits by itself.
+
+## Google Ads Setup
+
+1. Create the Google tag / Google Ads conversion actions in your ads account.
+2. Put the IDs into Netlify:
+   - `VITE_GOOGLE_TAG_ID`
+   - `VITE_GOOGLE_ADS_CONVERSION_ID`
+   - `VITE_GOOGLE_ADS_CHECKOUT_LABEL`
+   - `VITE_GOOGLE_ADS_PURCHASE_LABEL`
+3. Add public policy/contact URLs if you have them:
+   - `VITE_PRIVACY_URL`
+   - `VITE_TERMS_URL`
+   - `VITE_CONTACT_URL`
+
+The footer links are optional in code, but they are strongly recommended before sending paid traffic.
 
 ## Structure
 
