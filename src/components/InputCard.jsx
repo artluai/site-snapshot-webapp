@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAuth }) {
+export default function InputCard({ mode, onModeChange, onSnapshot }) {
   const [url, setUrl] = useState('');
   const [desktopFile, setDesktopFile] = useState(null);
   const [mobileFile, setMobileFile] = useState(null);
@@ -22,11 +22,11 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
 
   const tryHN = () => {
     setUrl('https://news.ycombinator.com');
-    onRequireAuth(() => onSnapshot({ url: 'https://news.ycombinator.com', exampleType: 'blog' }));
+    onSnapshot({ url: 'https://news.ycombinator.com', exampleType: 'blog' });
   };
   const tryLinear = () => {
     setUrl('https://linear.app');
-    onRequireAuth(() => onSnapshot({ url: 'https://linear.app', exampleType: 'spa' }));
+    onSnapshot({ url: 'https://linear.app', exampleType: 'spa' });
   };
 
   const primaryButtonLabel = mode === 'ai'
@@ -38,7 +38,7 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
   return (
     <section style={S.section} className="input-section" id="input-section">
       <div style={S.card} className="input-card">
-        <div style={S.label}>PASTE A LINK TO GET STARTED</div>
+        <div style={S.label}>PASTE A PAGE LINK TO GET STARTED</div>
 
         {mode !== 'upload' && (
           <div style={S.row} className="input-row">
@@ -95,10 +95,10 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
 
         <div style={S.modeDesc}>
           {mode === 'quick' && (
-            <div>Instant basic copy — grabs the page, strips out junk, gives you a clean file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>
+            <div>Quick mode fetches the page through our proxy, strips out scripts and junk, and gives you a simpler HTML file. <strong style={{ color: '#555' }}>Free, 1 per day.</strong></div>
           )}
           {mode === 'ai' && (
-            <div>Durable AI job — sends the page to a worker, saves the finished HTML as a file, and lets you preview/download it when ready. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
+            <div>Worker-based AI job — loads the page in a real browser, saves the finished HTML as a file, and lets you preview or download it when ready. <strong style={{ color: '#555' }}>1 credit per snapshot.</strong></div>
           )}
           {mode === 'upload' && (
             <div>Screenshot rebuild <span style={S.betaInline}>BETA</span> — uploads images into storage, then the worker turns them into a durable HTML artifact. Best for simple landing pages and clear screenshots. <strong style={{ color: '#555' }}>1 credit per snapshot, even when the beta output needs cleanup.</strong></div>
@@ -106,18 +106,18 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
         </div>
 
         <div style={S.freeGroup}>
-          <div style={S.freeLabel}><span style={S.freeBadge}>⚡ FREE</span> These examples and limits apply to the free tier</div>
+          <div style={S.freeLabel}><span style={S.freeBadge}>⚡ FREE</span> These examples show where quick mode works well and where it does not</div>
           <div style={S.freeBody}>
             <div style={S.compatGrid} className="compat-grid">
               <div style={S.compatGood}>
-                <div style={S.compatHead}>✅ Works great on</div>
+                <div style={S.compatHead}>✅ Free mode works best on</div>
                 <div style={S.compatItem}><span style={S.compatUrl}>news.ycombinator.com</span></div>
                 <div style={S.compatItem}><span style={S.compatUrl}>craigslist.org</span></div>
                 <div style={S.compatItem}><span style={S.compatUrl}>wikipedia.org</span></div>
                 <div style={{ ...S.compatItem, fontStyle: 'italic', color: '#aaa' }}>blogs, docs, static sites</div>
               </div>
               <div style={S.compatNeeds}>
-                <div style={{ ...S.compatHead, color: '#92400e' }}>⚠️ Needs AI mode</div>
+                <div style={{ ...S.compatHead, color: '#92400e' }}>⚠️ Often needs AI mode</div>
                 <div style={S.compatItem}><span style={S.compatUrl}>linear.app</span></div>
                 <div style={S.compatItem}><span style={S.compatUrl}>figma.com</span></div>
                 <div style={S.compatItem}><span style={S.compatUrl}>notion.so</span></div>
@@ -129,13 +129,13 @@ export default function InputCard({ mode, onModeChange, onSnapshot, onRequireAut
               <div style={S.exCard} onClick={tryHN}>
                 <div style={S.exTop}><span style={S.exBadgeFree}>⚡ FREE</span></div>
                 <div style={S.exUrl}>news.ycombinator.com</div>
-                <div style={S.exDesc}>Simple HTML — free mode captures this perfectly</div>
+                <div style={S.exDesc}>Simple HTML page. Quick mode usually works well here.</div>
                 <span style={S.exArrow}>→</span>
               </div>
               <div style={S.exCardSpa} onClick={tryLinear}>
                 <div style={S.exTop}><span style={S.exBadgeAi}>🧠 NEEDS AI</span></div>
                 <div style={S.exUrl}>linear.app</div>
-                <div style={S.exDesc}>React SPA — see what free mode misses</div>
+                <div style={S.exDesc}>JavaScript app. See why free mode is limited here.</div>
                 <span style={S.exArrow}>→</span>
               </div>
             </div>

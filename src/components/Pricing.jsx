@@ -3,7 +3,7 @@ export default function Pricing({ user, loadingPack, onBuy }) {
     <section style={S.section} className="pricing-section" id="pricing">
       <div style={S.header}>
         <h2 style={S.h2}>SIMPLE PRICING</h2>
-        <p style={S.sub}>Free mode is free forever. AI credits power url snapshots and screenshot rebuilds.</p>
+        <p style={S.sub}>Free mode is for simpler pages. AI credits power worker-based snapshots and screenshot rebuilds.</p>
       </div>
       <div style={S.grid} className="pricing-grid">
         {TIERS.map((t, i) => (
@@ -35,6 +35,9 @@ export default function Pricing({ user, loadingPack, onBuy }) {
           </div>
         ))}
       </div>
+      <p style={S.note}>
+        AI jobs cost 1 credit each. Failed AI jobs should return the reserved credit automatically. Screenshot rebuild is still beta and may need cleanup even when a job succeeds.
+      </p>
     </section>
   );
 }
@@ -43,24 +46,24 @@ const TIERS = [
   {
     emoji: '⚡', name: 'FREE', price: '$0', perUnit: '1 basic snapshot per day',
     features: [
-      { text: 'Instant results' }, { text: 'Clean single-file output' }, { text: 'Runs in your browser' },
-      { text: 'No AI analysis', no: true }, { text: 'No responsive toggle', no: true }, { text: "Won't work on SPAs", no: true },
+      { text: 'No sign-in required for the first free try' }, { text: 'Clean single-file output' }, { text: 'Best on simpler pages' },
+      { text: 'No AI worker capture', no: true }, { text: 'No screenshot rebuild', no: true }, { text: 'Limited on JavaScript-heavy pages', no: true },
     ],
   },
   {
     emoji: '🧠', name: 'STARTER', price: '$9', cents: '.99', perUnit: '4 AI credits · $2.50 each',
     featured: true, badge: 'MOST POPULAR', pack: 'starter', credits: 4, btnText: 'GET 4 CREDITS →',
     features: [
-      { text: 'Everything in Free' }, { text: 'AI design analysis' }, { text: 'Responsive desktop/mobile' },
-      { text: 'Working tabs & navigation' }, { text: 'Screenshot rebuild (beta)' }, { text: 'Credits never expire' },
+      { text: 'Everything in Free' }, { text: 'Browser-based worker capture' }, { text: 'Durable HTML file with preview/download' },
+      { text: 'Better on JavaScript-heavy pages' }, { text: 'Screenshot rebuild (beta)' }, { text: 'Failed jobs refund the credit' },
     ],
   },
   {
     emoji: '🚀', name: 'PRO PACK', price: '$29', cents: '.99', perUnit: '15 AI credits · $2 each',
     pack: 'pro', credits: 15, btnText: 'GET 15 CREDITS →',
     features: [
-      { text: 'Everything in Starter' }, { text: '4× more credits' }, { text: '25% cheaper per snapshot' },
-      { text: 'Priority processing' }, { text: 'Credits never expire' }, { text: 'Rebuild from screenshots (beta)' },
+      { text: 'Everything in Starter' }, { text: '15 credits up front' }, { text: 'Lower cost per snapshot' },
+      { text: 'Best for repeated use' }, { text: 'Credits currently do not expire' }, { text: 'Includes screenshot rebuild beta' },
     ],
   },
 ];
@@ -82,4 +85,5 @@ const S = {
   btn: { marginTop: 20, width: '100%', border: 'none', borderRadius: 50, padding: 12, fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 700 },
   btnPurple: { background: '#7c5cfc', color: '#fff' },
   btnDark: { background: '#1a1a1a', color: '#fff' },
+  note: { maxWidth: 900, margin: '18px auto 0', fontSize: 12, color: '#777', lineHeight: 1.6, textAlign: 'center' },
 };

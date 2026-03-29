@@ -27,12 +27,12 @@ export default function Hero() {
     <section style={S.hero} className="hero-grid">
       <div style={S.text}>
         <h1 style={S.h1} className="hero-title">
-          <span style={S.mint}>SAVE</span> A COPY OF{' '}
-          <span style={S.yellow}>ANY WEBSITE PAGE</span> IN SECONDS
+          <span style={S.mint}>SAVE</span>{' '}
+          <span style={S.yellow}>A WEBSITE PAGE</span> AS HTML
         </h1>
-        <p style={S.sub} className="hero-desc">Paste a page link. Get a clean copy you can download, share, or keep forever. No install. Just paste and go.</p>
+        <p style={S.sub} className="hero-desc">Paste a page link. Get a downloadable HTML copy. Free mode works best on simpler pages. AI mode helps with harder ones.</p>
         <button style={S.cta} onClick={() => document.querySelector('#input-section')?.scrollIntoView({ behavior: 'smooth' })}>
-          TRY IT FREE →
+          TRY FREE MODE →
         </button>
       </div>
       <div style={S.visual} className="hero-visual">
@@ -72,7 +72,7 @@ export default function Hero() {
           </div>
         </div>
         <div style={{ ...S.tag, top: 20, right: 20, animation: 'fl1 3s ease-in-out infinite' }}>ONE FILE ✓</div>
-        <div style={{ ...S.tag, bottom: 20, left: 20, background: '#7c5cfc', transform: 'rotate(-3deg)', animation: 'fl2 3.5s ease-in-out infinite' }}>WORKS OFFLINE ⚡</div>
+        <div style={{ ...S.tag, bottom: 20, left: 20, background: '#7c5cfc', transform: 'rotate(-3deg)', animation: 'fl2 3.5s ease-in-out infinite' }}>HTML DOWNLOAD ⚡</div>
         <div style={{ ...S.tag, bottom: 60, right: 30, background: '#ff6b6b', transform: 'rotate(2deg)', animation: 'fl3 4s ease-in-out infinite' }}>FREE TO START</div>
         <style>{`
           @keyframes scanDown{0%{top:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{top:calc(100% - 4px);opacity:0}}

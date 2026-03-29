@@ -86,7 +86,7 @@ function cleanHTML(raw, baseUrl) {
   doc.querySelectorAll('meta[http-equiv="refresh"]').forEach(el => el.remove());
 
   // Add a comment noting this is a snapshot
-  const comment = doc.createComment(' Snapshot captured by snapshot — artlu.ai ');
+  const comment = doc.createComment(' Snapshot captured by SiteSnapshot ');
   doc.head.prepend(comment);
 
   return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;

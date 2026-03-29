@@ -1,28 +1,26 @@
 const FOOTER_LINKS = [
-  { key: 'privacy', label: 'privacy', href: import.meta.env.VITE_PRIVACY_URL || '' },
-  { key: 'terms', label: 'terms', href: import.meta.env.VITE_TERMS_URL || '' },
-  { key: 'contact', label: 'contact', href: import.meta.env.VITE_CONTACT_URL || '' },
-].filter((item) => item.href);
+  { key: 'privacy', label: 'privacy', href: import.meta.env.VITE_PRIVACY_URL || '/privacy' },
+  { key: 'terms', label: 'terms', href: import.meta.env.VITE_TERMS_URL || '/terms' },
+  { key: 'contact', label: 'contact', href: import.meta.env.VITE_CONTACT_URL || '/contact' },
+];
 
 export default function Footer() {
   return (
     <div style={S.footer} className="footer-bar">
       <div style={S.left}>
-        <span>built with the <a href="#" style={S.link}>site-snapshot</a> Claude skill</span>
+        <span>downloadable html snapshots</span>
         <span>hosted checkout by Stripe</span>
       </div>
       <div style={S.right}>
-        {FOOTER_LINKS.length > 0 && (
-          <span style={S.links}>
-            {FOOTER_LINKS.map((item, index) => (
-              <span key={item.key}>
-                {index > 0 ? ' · ' : ''}
-                <a href={item.href} style={S.link} target="_blank" rel="noreferrer">{item.label}</a>
-              </span>
-            ))}
-          </span>
-        )}
-        <span>by <a href="https://artlu.ai" style={S.link}>artlu.ai</a> — 100 projects in 100 days</span>
+        <span style={S.links}>
+          {FOOTER_LINKS.map((item, index) => (
+            <span key={item.key}>
+              {index > 0 ? ' · ' : ''}
+              <a href={item.href} style={S.link}>{item.label}</a>
+            </span>
+          ))}
+        </span>
+        <span>SiteSnapshot</span>
       </div>
     </div>
   );

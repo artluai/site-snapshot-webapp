@@ -1,7 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
-import { loadOrCreateUser, canUseFreeToday, markFreeUsed, subscribeToUser } from './lib/credits.js';
+import {
+  loadOrCreateUser,
+  canUseFreeToday,
+  getGuestFreeUsedToday,
+  markFreeUsed,
+  markGuestFreeUsed,
+  subscribeToUser,
+} from './lib/credits.js';
 import { fetchAndClean } from './lib/snapshot-free.js';
 import { createJob, getArtifactUrl, startJob, subscribeToJob } from './lib/jobs.js';
 import { uploadJobSourceFiles } from './lib/uploads.js';
@@ -48,7 +55,7 @@ const RESPONSIVE_CSS = `
 export default function App() {
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
-  const [freeUsedToday, setFreeUsedToday] = useState(null);
+  const [freeUsedToday, setFreeUsedToday] = useState(() => getGuestFreeUsedToday());
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState('quick');
   const [result, setResult] = useState(null);
@@ -158,7 +165,7 @@ export default function App() {
         }
       } else {
         stopListeningToJob();
-        setUser(null); setCredits(0); setFreeUsedToday(null); setResult(null);
+        setUser(null); setCredits(0); setFreeUsedToday(getGuestFreeUsedToday()); setResult(null);
       }
     });
     return () => {
@@ -236,7 +243,7 @@ export default function App() {
   }, [requireAuth, toast]);
 
   const handleSnapshot = useCallback((payload) => {
-    requireAuth(async () => {
+    const runSnapshot = async (activeUser) => {
       const url = payload?.url || '';
       const exampleType = payload?.exampleType;
       const files = Array.isArray(payload?.files) ? payload.files : [];
@@ -292,8 +299,12 @@ export default function App() {
         }
 
         const { html, sizeKB } = await fetchAndClean(url);
-        await markFreeUsed(user.uid);
-        setFreeUsedToday(new Date().toISOString().slice(0, 10));
+        if (activeUser?.uid) {
+          await markFreeUsed(activeUser.uid);
+          setFreeUsedToday(new Date().toISOString().slice(0, 10));
+        } else {
+          setFreeUsedToday(markGuestFreeUsed());
+        }
         setResult({ type: 'free-success', host, html, sizeKB });
       } catch (err) {
         console.error('Snapshot failed:', err);
@@ -309,6 +320,15 @@ export default function App() {
       } finally {
         setLoading(false);
       }
+    };
+
+    if (mode === 'quick') {
+      void runSnapshot(user);
+      return;
+    }
+
+    requireAuth(() => {
+      void runSnapshot(user);
     });
   }, [mode, freeUsedToday, user, requireAuth, startListeningToJob, toast]);
 
@@ -322,7 +342,7 @@ export default function App() {
       <Nav user={user} credits={credits} onSignIn={() => setAuthOpen(true)} onSignOut={handleSignOut} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={handleSignIn} />
       <Hero />
-      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} onRequireAuth={requireAuth} />
+      <InputCard mode={mode} onModeChange={setMode} onSnapshot={handleSnapshot} />
       <ResultsPanel result={result} mode={mode} loading={loading} onDismissStamp={handleDismissStamp} onUpgradeMode={() => setMode('ai')} toast={toast} />
       <Pricing user={user} loadingPack={checkoutPack} onBuy={handleBuyCredits} />
       <Features />

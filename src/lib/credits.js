@@ -1,6 +1,8 @@
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase.js';
 
+const GUEST_FREE_KEY = 'snapshot-free-used-date';
+
 /**
  * Load user doc from Firestore. Create if new user.
  * Returns { credits, freeUsedToday }
@@ -36,6 +38,28 @@ export function canUseFreeToday(freeUsedToday) {
   if (!freeUsedToday) return true;
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   return freeUsedToday !== today;
+}
+
+export function getGuestFreeUsedToday() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    return window.localStorage.getItem(GUEST_FREE_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function markGuestFreeUsed() {
+  if (typeof window === 'undefined') return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    window.localStorage.setItem(GUEST_FREE_KEY, today);
+  } catch {
+    // Ignore storage errors and still return the current date for UI state.
+  }
+  return today;
 }
 
 /**
