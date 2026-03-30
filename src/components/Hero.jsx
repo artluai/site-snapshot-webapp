@@ -28,7 +28,7 @@ export default function Hero() {
       <div style={S.text}>
         <h1 style={S.h1} className="hero-title">
           <span style={S.mint}>SAVE</span>{' '}
-          <span style={S.yellow}>A WEBSITE PAGE</span> AS HTML
+          <span style={S.yellow}>ANY WEBSITE PAGE</span> AS A SINGLE FILE
         </h1>
         <p style={S.sub} className="hero-desc">Paste a page link. Get a downloadable HTML copy. Free mode works best on simpler pages. AI mode helps with harder ones.</p>
         <button style={S.cta} onClick={() => document.querySelector('#input-section')?.scrollIntoView({ behavior: 'smooth' })}>

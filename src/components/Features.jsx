@@ -23,7 +23,7 @@ const FEATS = [
   { emoji: '🧭', title: 'BETTER ON HARDER PAGES', desc: 'AI mode uses a real browser worker and usually captures more of JavaScript-heavy pages than free mode.' },
   { emoji: '🎨', title: 'TRIES TO KEEP THE LOOK', desc: 'AI mode aims to preserve layout, styling, and page structure, but exact matches are not guaranteed.' },
   { emoji: '📸', title: 'NO LINK? SCREENSHOT IT (BETA)', desc: 'Drop a desktop and mobile screenshot. AI rebuilds the page from images. Works best on clear landing pages and readable screenshots.' },
-  { emoji: '⚡', title: 'START FREE', desc: 'Quick mode is free and best for blogs, docs, and simpler static pages. No sign-in required for the first free try.' },
+  { emoji: '⚡', title: 'START FREE', desc: 'Quick mode is free and best for blogs, docs, and simpler static pages. Sign in to save jobs and manage credits.' },
 ];
 
 const S = {

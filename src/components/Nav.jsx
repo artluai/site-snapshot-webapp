@@ -2,7 +2,11 @@ export default function Nav({ user, credits, onSignIn, onSignOut }) {
   return (
     <nav style={S.nav} className="nav-bar">
       <div style={S.logo} onClick={() => scrollTo({ top: 0, behavior: 'smooth' })}>
-        <div style={S.icon}>S</div> snapshot
+        <div style={S.icon}>S</div>
+        <div style={S.brandCopy}>
+          <div style={S.brandMain}>snapshot</div>
+          <div style={S.brandSub}>by Vellumray</div>
+        </div>
       </div>
       <div style={S.right}>
         {user && <div style={S.credits}>{credits} credits</div>}
@@ -20,6 +24,9 @@ export default function Nav({ user, credits, onSignIn, onSignOut }) {
 const S = {
   nav: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 100 },
   logo: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: -1, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+  brandCopy: { display: 'flex', alignItems: 'baseline', gap: 8, lineHeight: 1 },
+  brandMain: { fontSize: 22, fontWeight: 700, letterSpacing: -1, color: '#1a1a1a' },
+  brandSub: { fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 500, color: '#999', letterSpacing: '0.08em', textTransform: 'uppercase' },
   icon: { width: 32, height: 32, background: '#1a1a1a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700 },
   right: { display: 'flex', alignItems: 'center', gap: 8 },
   credits: { background: '#f5f3ff', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '8px 12px', borderRadius: 50, fontSize: 12, fontWeight: 700, letterSpacing: '-.2px' },

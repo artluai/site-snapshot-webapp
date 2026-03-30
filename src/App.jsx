@@ -4,9 +4,7 @@ import { auth, googleProvider } from './firebase.js';
 import {
   loadOrCreateUser,
   canUseFreeToday,
-  getGuestFreeUsedToday,
   markFreeUsed,
-  markGuestFreeUsed,
   subscribeToUser,
 } from './lib/credits.js';
 import { fetchAndClean } from './lib/snapshot-free.js';
@@ -55,7 +53,7 @@ const RESPONSIVE_CSS = `
 export default function App() {
   const [user, setUser] = useState(null);
   const [credits, setCredits] = useState(0);
-  const [freeUsedToday, setFreeUsedToday] = useState(() => getGuestFreeUsedToday());
+  const [freeUsedToday, setFreeUsedToday] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState('quick');
   const [result, setResult] = useState(null);
@@ -165,7 +163,7 @@ export default function App() {
         }
       } else {
         stopListeningToJob();
-        setUser(null); setCredits(0); setFreeUsedToday(getGuestFreeUsedToday()); setResult(null);
+        setUser(null); setCredits(0); setFreeUsedToday(null); setResult(null);
       }
     });
     return () => {
@@ -299,12 +297,8 @@ export default function App() {
         }
 
         const { html, sizeKB } = await fetchAndClean(url);
-        if (activeUser?.uid) {
-          await markFreeUsed(activeUser.uid);
-          setFreeUsedToday(new Date().toISOString().slice(0, 10));
-        } else {
-          setFreeUsedToday(markGuestFreeUsed());
-        }
+        await markFreeUsed(activeUser.uid);
+        setFreeUsedToday(new Date().toISOString().slice(0, 10));
         setResult({ type: 'free-success', host, html, sizeKB });
       } catch (err) {
         console.error('Snapshot failed:', err);
@@ -321,11 +315,6 @@ export default function App() {
         setLoading(false);
       }
     };
-
-    if (mode === 'quick') {
-      void runSnapshot(user);
-      return;
-    }
 
     requireAuth(() => {
       void runSnapshot(user);

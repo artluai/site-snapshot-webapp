@@ -36,8 +36,12 @@ export default function Pricing({ user, loadingPack, onBuy }) {
         ))}
       </div>
       <p style={S.note}>
-        AI jobs cost 1 credit each. Failed AI jobs should return the reserved credit automatically. Screenshot rebuild is still beta and may need cleanup even when a job succeeds.
+        AI jobs cost 1 credit each. Screenshot rebuild is still beta and may need cleanup even when a job succeeds.
       </p>
+      <p style={S.email}>
+        Questions about billing or access? <a href="mailto:support@vellumray.com" style={S.link}>support@vellumray.com</a>
+      </p>
+      <p style={S.final}>All sales are final.</p>
     </section>
   );
 }
@@ -46,7 +50,7 @@ const TIERS = [
   {
     emoji: '⚡', name: 'FREE', price: '$0', perUnit: '1 basic snapshot per day',
     features: [
-      { text: 'No sign-in required for the first free try' }, { text: 'Clean single-file output' }, { text: 'Best on simpler pages' },
+      { text: 'Saved to your account' }, { text: 'Clean single-file output' }, { text: 'Best on simpler pages' },
       { text: 'No AI worker capture', no: true }, { text: 'No screenshot rebuild', no: true }, { text: 'Limited on JavaScript-heavy pages', no: true },
     ],
   },
@@ -55,7 +59,7 @@ const TIERS = [
     featured: true, badge: 'MOST POPULAR', pack: 'starter', credits: 4, btnText: 'GET 4 CREDITS →',
     features: [
       { text: 'Everything in Free' }, { text: 'Browser-based worker capture' }, { text: 'Durable HTML file with preview/download' },
-      { text: 'Better on JavaScript-heavy pages' }, { text: 'Screenshot rebuild (beta)' }, { text: 'Failed jobs refund the credit' },
+      { text: 'Better on JavaScript-heavy pages' }, { text: 'Screenshot rebuild (beta)' }, { text: 'All sales are final' },
     ],
   },
   {
@@ -86,4 +90,7 @@ const S = {
   btnPurple: { background: '#7c5cfc', color: '#fff' },
   btnDark: { background: '#1a1a1a', color: '#fff' },
   note: { maxWidth: 900, margin: '18px auto 0', fontSize: 12, color: '#777', lineHeight: 1.6, textAlign: 'center' },
+  email: { maxWidth: 900, margin: '10px auto 0', fontSize: 12, color: '#777', lineHeight: 1.6, textAlign: 'center' },
+  final: { maxWidth: 900, margin: '4px auto 0', fontSize: 12, color: '#999', lineHeight: 1.6, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.05em' },
+  link: { color: '#555', textDecoration: 'none' },
 };
